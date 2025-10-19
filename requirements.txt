@@ -1,0 +1,7 @@
+# Залежності для Budget Helper Bot
+
+# Telegram Bot API
+pyTelegramBotAPI==4.14.0
+
+# Environment variables
+python-dotenv==1.0.0
