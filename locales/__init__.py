@@ -10,6 +10,10 @@ from .locale_manager import (
     get_income_types,
     get_expense_types,
     get_time_frames,
+    get_current_language,
+    translate_income_category,
+    translate_expense_category,
+    get_category_key_from_callback,
 )
 
 __all__ = [
@@ -19,4 +23,8 @@ __all__ = [
     'get_income_types',
     'get_expense_types',
     'get_time_frames',
+    'get_current_language',
+    'translate_income_category',
+    'translate_expense_category',
+    'get_category_key_from_callback',
 ]

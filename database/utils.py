@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 
 def get_date_range_for_period(period):
-    now = datetime.now(timezone.utc)
+    now = datetime.now()  # Використовуємо локальний час, як в моделях
     
     if period == 'today':
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
