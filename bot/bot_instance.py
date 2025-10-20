@@ -16,18 +16,24 @@ except Exception as e:
 
 
 def init_bot():
+    """
+    Ініціалізує бота та реєструє всі handlers.
+    Використовує model архітектуру та локалізацію.
+    """
     try:
         print("[*] Importing handlers...", flush=True)
-        from handlers import start, income, finance, misc
+        from handlers import start, income, expenses, finance, settings, misc
         
         print("[*] Registering handlers...", flush=True)
         start.register_handlers(bot)
         income.register_handlers(bot)
+        expenses.register_handlers(bot)
         finance.register_handlers(bot)
+        settings.register_handlers(bot)
         misc.register_handlers(bot)
         
         print("[OK] Bot initialized successfully!", flush=True)
-        print("[OK] Registered handlers: start, income, finance, misc", flush=True)
+        print("[OK] Registered handlers: start, income, expenses, finance, settings, misc", flush=True)
         return bot
         
     except Exception as e:
