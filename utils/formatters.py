@@ -116,3 +116,34 @@ def format_expense_model(expense: Expense) -> str:
     return (f"💸 {expense.description}: {expense.amount:.2f} {expense.currency}\n"
             f"📅 {expense.add_date}")
 
+
+def format_general_finances(incomes_data: dict, expenses_data: dict, period_name: str, user_id: int = None) -> str:
+    """
+    Форматує загальні фінанси для відображення.
+    
+    Args:
+        incomes_data: Словник з агрегованими доходами
+        expenses_data: Словник з агрегованими витратами
+        period_name: Назва періоду для відображення
+        user_id: ID користувача для локалізації
+    
+    Returns:
+        str: Відформатований текст
+    """
+    total_income = incomes_data.get('total', 0.0)
+    total_expense = expenses_data.get('total', 0.0)
+    balance = calculate_balance(total_income, total_expense)
+    
+    msg = get_text('view_general_title', user_id=user_id).format(period_name)
+    msg += get_text('view_general_income', user_id=user_id).format(total_income) + '\n'
+    msg += get_text('view_general_expense', user_id=user_id).format(total_expense)
+    
+    if balance > 0:
+        msg += get_text('view_general_balance_positive', user_id=user_id).format(balance)
+    elif balance < 0:
+        msg += get_text('view_general_balance_negative', user_id=user_id).format(balance)
+    else:
+        msg += get_text('view_general_balance_zero', user_id=user_id)
+    
+    return msg
+
