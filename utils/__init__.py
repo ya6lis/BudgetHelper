@@ -23,6 +23,7 @@ from .formatters import (
     calculate_balance,
     format_income_model,
     format_expense_model,
+    format_general_finances,
 )
 
 __all__ = [
@@ -45,5 +46,6 @@ __all__ = [
     'calculate_balance',
     'format_income_model',
     'format_expense_model',
+    'format_general_finances',
 ]
 

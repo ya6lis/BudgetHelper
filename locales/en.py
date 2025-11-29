@@ -67,6 +67,17 @@ TEXTS_EN = {
     'finance_select_option': 'Please select what you want to view 📊:',
     'finance_menu_info': '📊 My Finances\n\n💰 Incomes - view all income records\n💸 Expenses - detailed expense information\n📈 General statistics - balance and analysis\n\nSelect a section:',
     
+    # General finances
+    'view_general_select_period': '📊 General Finances\n\n📅 Select a period to view your balance:\n\n💡 You will see income, expenses, and balance for the selected period.',
+    'view_general_no_data': '💡 Unfortunately, there are no financial transactions for the selected period.\n\n📝 Add income or expenses through the main menu!',
+    'view_general_title': "📊 General Finances '{}'\n\n",
+    'view_general_income': '💰 Income: {:.2f} UAH',
+    'view_general_expense': '💸 Expenses: {:.2f} UAH',
+    'view_general_balance_positive': '\n📈 Balance: +{:.2f} UAH\n\n✅ Your finances are positive!',
+    'view_general_balance_negative': '\n📉 Balance: {:.2f} UAH\n\n⚠️ Expenses exceed income.',
+    'view_general_balance_zero': '\n⚖️ Balance: 0.00 UAH\n\n💡 Income and expenses are balanced.',
+    'view_general_select_another': 'Select period to view general finances:',
+    
     # Settings
     'settings_menu': '⚙️ Settings\n\n🛠 Here you can:\n• Change interface language\n• Configure parameters (coming soon)\n• Manage categories (coming soon)\n\nSelect an option:',
     'settings_change_language': '🌐 Change Language',
