@@ -162,6 +162,18 @@ TEXTS_EN = {
     'statistics_title': 'Statistics',
     'dynamics_title': 'Financial Dynamics',
     'unknown_category': 'Unknown Category',
+    'total_text': 'Total',
+    'expense_fallback': 'Expense',
+    'income_fallback': 'Income',
+    'incomes_header': '💰 Incomes:',
+    'expenses_header': '💸 Expenses:',
+    'balance_header': '📊 Balance:',
+    'balance_positive': '📈 Balance: {}',
+    'balance_negative': '📉 Balance: {}',
+    'finances_positive': '✅ Your finances are in the plus!',
+    'finances_negative': '⚠️ Expenses exceed income.',
+    'currency_rates_title': '💱 Currency Rates:',
+    'updated_at': '🕒 Updated: {}',
     
     # Settings
     'settings_menu': '⚙️ Settings\n\n🛠 Here you can:\n• Change interface language\n• Change default currency\n• Manage income and expense categories\n\nSelect an option:',
@@ -178,6 +190,8 @@ TEXTS_EN = {
     'settings_invalid_currency': '❌ Invalid currency selection. Try again.',
     'select_transaction_currency': '💱 Select currency for this transaction:\n\n💡 You can choose a currency different from your default.\n\n✓ - your default currency',
     'currency_conversion_info': '🔄 Approximate conversion to {}: {}',
+    'approximate_income_after_conversion': '🔄 Approximate income after conversion: {} {}',
+    'approximate_expense_after_conversion': '🔄 Approximate expenses after conversion: {} {}',
     'by_currency': 'By currency',
     
     # Category Management

@@ -1137,7 +1137,7 @@
                 }
             });
             
-            lines.push(`Всього: ≈ ${totalConverted.toFixed(2)} ${currencySymbols[userCurrency]}`);
+            lines.push(`{{ total_text }}: ≈ ${totalConverted.toFixed(2)} ${currencySymbols[userCurrency]}`);
             return lines;
         }
 
@@ -1219,7 +1219,7 @@
                                         lines.push('  ' + amount.toFixed(2) + ' ' + symbol);
                                     }
                                 });
-                                lines.push('Всього: ≈ ' + totalConverted.toFixed(2) + ' ' + currencySymbols[userCurrency]);
+                                lines.push('{{ total_text }}: ≈ ' + totalConverted.toFixed(2) + ' ' + currencySymbols[userCurrency]);
                                 return lines;
                             }
                         }

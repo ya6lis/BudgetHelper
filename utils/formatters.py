@@ -56,7 +56,7 @@ def format_income_list(data: dict, period_name: str, user_id: int = None) -> str
     has_single_non_default_currency = (len(by_currency) == 1 and currency not in by_currency)
     
     if len(by_currency) > 1 or has_single_non_default_currency:
-        msg += f"\n🔄 Приблизна сума доходів після конвертації: {total:.2f} {currency_symbol}"
+        msg += "\n" + get_text('approximate_income_after_conversion', user_id=user_id).format(f"{total:.2f}", currency_symbol)
     else:
         msg += get_text('view_incomes_total', user_id=user_id).format(f"{total:.2f} {currency_symbol}")
     
@@ -110,7 +110,7 @@ def format_expense_list(data: dict, period_name: str, user_id: int = None) -> st
     has_single_non_default_currency = (len(by_currency) == 1 and currency not in by_currency)
     
     if len(by_currency) > 1 or has_single_non_default_currency:
-        msg += f"\n🔄 Приблизна сума витрат після конвертації: {total:.2f} {currency_symbol}"
+        msg += "\n" + get_text('approximate_expense_after_conversion', user_id=user_id).format(f"{total:.2f}", currency_symbol)
     else:
         msg += get_text('view_expenses_total', user_id=user_id).format(f"{total:.2f} {currency_symbol}")
     
@@ -244,7 +244,7 @@ def format_general_finances(incomes_data: dict, expenses_data: dict, period_name
     
     # Доходи
     if has_multiple_currencies and income_by_currency:
-        msg += "\n💰 Доходи:\n"
+        msg += "\n" + get_text('incomes_header', user_id=user_id) + "\n"
         for curr in sorted(income_by_currency.keys()):
             amount = income_by_currency[curr]
             curr_symbol = get_currency_symbol(curr)
@@ -262,7 +262,7 @@ def format_general_finances(incomes_data: dict, expenses_data: dict, period_name
     
     # Витрати
     if has_multiple_currencies and expense_by_currency:
-        msg += "\n💸 Витрати:\n"
+        msg += "\n" + get_text('expenses_header', user_id=user_id) + "\n"
         for curr in sorted(expense_by_currency.keys()):
             amount = expense_by_currency[curr]
             curr_symbol = get_currency_symbol(curr)
@@ -286,7 +286,7 @@ def format_general_finances(incomes_data: dict, expenses_data: dict, period_name
         
         if has_multiple_currencies:
             # Показуємо баланс по кожній валюті окремо
-            msg += "\n📊 Баланс:\n"
+            msg += "\n" + get_text('balance_header', user_id=user_id) + "\n"
             for curr in sorted(all_currencies):
                 income_in_curr = income_by_currency.get(curr, 0.0)
                 expense_in_curr = expense_by_currency.get(curr, 0.0)
@@ -306,19 +306,19 @@ def format_general_finances(incomes_data: dict, expenses_data: dict, period_name
             # Простий баланс для однієї валюти
             approx_text = f"\n{get_text('currency_conversion_info', user_id=user_id).format(user_currency_symbol, f'{total_balance_converted:+.2f} {user_currency_symbol}')}"
             if total_balance_converted >= 0:
-                msg += f"\n📈 Баланс: {balance_text}"
+                msg += "\n" + get_text('balance_positive', user_id=user_id).format(balance_text)
                 if user_currency not in all_currencies:
                     msg += approx_text
             else:
-                msg += f"\n📉 Баланс: {balance_text}"
+                msg += "\n" + get_text('balance_negative', user_id=user_id).format(balance_text)
                 if user_currency not in all_currencies:
                     msg += approx_text
         
         # Повідомлення про стан фінансів
         if total_balance_converted >= 0:
-            msg += "\n\n✅ Ваші фінанси в плюсі!"
+            msg += "\n\n" + get_text('finances_positive', user_id=user_id)
         else:
-            msg += "\n\n⚠️ Витрати перевищують доходи."
+            msg += "\n\n" + get_text('finances_negative', user_id=user_id)
     else:
         msg += get_text('view_general_balance_zero', user_id=user_id)
     

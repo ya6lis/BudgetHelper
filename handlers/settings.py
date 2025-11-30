@@ -94,7 +94,7 @@ def register_handlers(bot):
         ensure_user_exists(user_id, call.from_user.username)
         
         # Отримуємо актуальні курси валют
-        rate_info = get_rate_info()
+        rate_info = get_rate_info(user_id=user_id)
         
         keyboard = create_currency_keyboard(user_id=user_id, back_callback=CALLBACK_BACK_TO_SETTINGS)
         bot.edit_message_text(

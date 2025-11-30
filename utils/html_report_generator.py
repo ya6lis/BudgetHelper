@@ -215,6 +215,7 @@ class HTMLReportGenerator:
             'simple_view_btn': get_text('simple_view_btn', user_id=user_id),
             'detailed_view_btn': get_text('detailed_view_btn', user_id=user_id),
             'dynamics_title': get_text('dynamics_title', user_id=user_id),
+            'total_text': get_text('total_text', user_id=user_id),
         }
     
     def _get_currency_symbol(self, currency_code: str) -> str:

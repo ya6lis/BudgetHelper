@@ -4,6 +4,7 @@ import sqlite3
 import uuid
 from threading import Lock
 from config.constants import DB_FILE
+from locales.locale_manager import get_income_types, get_expense_types
 
 _lock = Lock()
 
@@ -87,13 +88,8 @@ def init_db():
             ''')
             
             # Додаємо дефолтні категорії доходів (тільки якщо їх ще немає)
-            default_income_categories = [
-                ('Зарплата', 'income'),
-                ('Премія', 'income'),
-                ('Подарунок', 'income'),
-                ('Інвестиції', 'income'),
-                ('Інше', 'income')
-            ]
+            # Отримуємо категорії з української локалізації (базова мова)
+            default_income_categories = [(name, 'income') for name in get_income_types('uk')]
             
             for name, cat_type in default_income_categories:
                 # Перевіряємо чи існує дефолтна категорія
@@ -109,13 +105,8 @@ def init_db():
                     ''', (generate_uuid(), name, cat_type))
             
             # Додаємо дефолтні категорії витрат (тільки якщо їх ще немає)
-            default_expense_categories = [
-                ('Їжа', 'expense'),
-                ('Транспорт', 'expense'),
-                ('Здоров\'я', 'expense'),
-                ('Розваги', 'expense'),
-                ('Інше', 'expense')
-            ]
+            # Отримуємо категорії з української локалізації (базова мова)
+            default_expense_categories = [(name, 'expense') for name in get_expense_types('uk')]
             
             for name, cat_type in default_expense_categories:
                 # Перевіряємо чи існує дефолтна категорія
@@ -131,8 +122,6 @@ def init_db():
                     ''', (generate_uuid(), name, cat_type))
             
             conn.commit()
-    
-    print("[OK] Database initialized successfully!", flush=True)
 
 
 def ensure_user(cursor, user_id):

@@ -7,7 +7,7 @@ Handler для обробки доходів користувача.
 from telebot.apihelper import ApiTelegramException
 from utils import send_main_menu, answer_callback, validate_amount
 from database import add_income, ensure_user_exists, CategoryRepository, get_user
-from locales import get_text, get_current_language
+from locales import get_text, get_current_language, translate_category_name
 from keyboards import create_income_types_keyboard, back_button, create_transaction_currency_keyboard
 from utils.currency_converter import convert_currency, format_amount_with_currency, get_currency_symbol
 from config.callbacks import (
@@ -69,8 +69,9 @@ def register_handlers(bot):
             'message_id': call.message.message_id
         }
         
+        translated_category_name = translate_category_name(category.name, user_id=user_id)
         bot.edit_message_text(
-            get_text('income_enter_amount', user_id=user_id).format(category.name),
+            get_text('income_enter_amount', user_id=user_id).format(translated_category_name),
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
             reply_markup=back_button(user_id=user_id, back_callback=CALLBACK_BACK_TO_ADD_INCOME)

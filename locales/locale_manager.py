@@ -182,7 +182,6 @@ def translate_category_name(category_name, lang=None, user_id=None):
         'Премія': 'Bonus',
         'Подарунок': 'Gift',
         'Інвестиції': 'Investments',
-        'Інше': 'Other',
         'Інші': 'Other'
     }
     
@@ -190,9 +189,10 @@ def translate_category_name(category_name, lang=None, user_id=None):
     EXPENSE_NAME_MAPPING = {
         'Їжа': 'Food',
         'Транспорт': 'Transport',
-        'Здоров\'я': 'Health',
+        'Комунальні послуги': 'Utilities',
         'Розваги': 'Entertainment',
-        'Інше': 'Other',
+        'Здоров\'я': 'Health',
+        'Одяг': 'Clothing',
         'Інші': 'Other'
     }
     

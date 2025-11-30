@@ -157,7 +157,8 @@ def format_category_breakdown(report: ReportData, user_id: int = None, top_n: in
                                 msg += f"    ◦ {amount:.2f} {curr_symbol} <i>(≈ {converted:.2f} {currency_symbol})</i>\n"
                             else:
                                 msg += f"    ◦ {amount:.2f} {curr_symbol}\n"
-                        msg += f"    <b>Всього: ≈ {converted_amount:.2f} {currency_symbol} ({percentage:.2f}%)</b>\n"
+                        total_text = get_text('total_text', user_id=user_id)
+                        msg += f"    <b>{total_text}: ≈ {converted_amount:.2f} {currency_symbol} ({percentage:.2f}%)</b>\n"
                     else:
                         # Одна валюта (дефолтна)
                         curr = list(currencies.keys())[0]
@@ -225,7 +226,8 @@ def format_category_breakdown(report: ReportData, user_id: int = None, top_n: in
                                 msg += f"    ◦ {amount:.2f} {curr_symbol} <i>(≈ {converted:.2f} {currency_symbol})</i>\n"
                             else:
                                 msg += f"    ◦ {amount:.2f} {curr_symbol}\n"
-                        msg += f"    <b>Всього: ≈ {converted_amount:.2f} {currency_symbol} ({percentage:.2f}%)</b>\n"
+                        total_text = get_text('total_text', user_id=user_id)
+                        msg += f"    <b>{total_text}: ≈ {converted_amount:.2f} {currency_symbol} ({percentage:.2f}%)</b>\n"
                     else:
                         # Одна валюта (дефолтна)
                         curr = list(currencies.keys())[0]

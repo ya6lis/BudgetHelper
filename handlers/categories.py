@@ -7,6 +7,7 @@ from typing import Optional
 from telebot import TeleBot, types
 from telebot.apihelper import ApiTelegramException
 from locales import get_text
+from locales.locale_manager import translate_category_name
 from keyboards.main_keyboards import (
     create_category_management_menu,
     create_category_type_selection,
@@ -239,7 +240,9 @@ def view_categories_list(call: types.CallbackQuery, bot: TeleBot, category_type:
     if default_cats:
         text += get_text('default_categories', user_id=user_id) + '\n'
         for cat in default_cats:
-            text += f"  • {cat.name}\n"
+            # Перекладаємо дефолтні категорії
+            translated_name = translate_category_name(cat.name, user_id=user_id)
+            text += f"  • {translated_name}\n"
         text += '\n'
     
     if custom_cats:

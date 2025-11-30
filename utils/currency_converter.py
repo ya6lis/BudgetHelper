@@ -8,6 +8,7 @@ import requests
 from datetime import datetime, timedelta
 from threading import Lock
 from typing import Dict, Optional
+from locales.locale_manager import get_text
 
 # Cache для курсів валют
 _rate_cache: Dict[str, Dict] = {}
@@ -234,16 +235,19 @@ def format_amount_with_currency(amount: float, currency: str) -> str:
     return f"{amount:.2f} {symbol}"
 
 
-def get_rate_info() -> str:
+def get_rate_info(user_id: int = None) -> str:
     """
     Отримати інформацію про поточні курси валют у текстовому вигляді.
+    
+    Args:
+        user_id: ID користувача для локалізації
     
     Returns:
         Текст з курсами валют
     """
     rates = get_exchange_rates()
     
-    text = "💱 Курси валют:\n\n"
+    text = get_text('currency_rates_title', user_id=user_id) + "\n\n"
     
     # USD -> UAH, EUR
     text += f"1 USD = {rates['USD']['UAH']:.2f} UAH\n"
@@ -260,7 +264,7 @@ def get_rate_info() -> str:
     # Додати інформацію про оновлення
     if _rate_cache.get('timestamp'):
         update_time = _rate_cache['timestamp'].strftime('%H:%M')
-        text += f"\n🕒 Оновлено: {update_time}"
+        text += "\n" + get_text('updated_at', user_id=user_id).format(update_time)
     
     return text
 
