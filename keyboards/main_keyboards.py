@@ -33,6 +33,9 @@ from config.callbacks import (
     CALLBACK_SETTINGS_LANGUAGE,
     CALLBACK_LANGUAGE_UK,
     CALLBACK_LANGUAGE_EN,
+    CALLBACK_REPORT_DETAILED,
+    CALLBACK_REPORT_QUICK,
+    CALLBACK_BACK_TO_REPORT_MENU,
 )
 
 
@@ -166,19 +169,24 @@ def create_timeframe_keyboard(user_id=None, back_callback=CALLBACK_BACK_TO_MAIN)
     return markup
 
 
-def create_income_types_keyboard(lang='uk', back_callback=CALLBACK_BACK_TO_MAIN):
+def create_income_types_keyboard(user_id=None, back_callback=CALLBACK_BACK_TO_MAIN):
     """Клавіатура вибору типу доходу."""
+    from database import CategoryRepository
+    from locales import translate_category_name
+    
     markup = types.InlineKeyboardMarkup(row_width=2)
-    income_types = get_income_types(lang)
-    callbacks = INCOME_TYPE_CALLBACKS.get(lang, INCOME_TYPE_CALLBACKS['uk'])
+    
+    # Отримуємо категорії з бази (дефолтні + кастомні)
+    categories = CategoryRepository.get_categories_by_type(user_id, 'income')
     
     buttons = []
-    for income_type in income_types:
-        callback_data = callbacks.get(income_type, CALLBACK_BACK)
+    for cat in categories:
+        # Перекладаємо назву категорії
+        translated_name = translate_category_name(cat.name, user_id=user_id)
         buttons.append(
             types.InlineKeyboardButton(
-                income_type,
-                callback_data=callback_data
+                translated_name,
+                callback_data=f'income_cat_{cat.id}'
             )
         )
     
@@ -210,19 +218,24 @@ def create_income_types_keyboard(lang='uk', back_callback=CALLBACK_BACK_TO_MAIN)
     return markup
 
 
-def create_expense_types_keyboard(lang='uk', back_callback=CALLBACK_BACK_TO_MAIN):
+def create_expense_types_keyboard(user_id=None, back_callback=CALLBACK_BACK_TO_MAIN):
     """Клавіатура вибору типу витрати."""
+    from database import CategoryRepository
+    from locales import translate_category_name
+    
     markup = types.InlineKeyboardMarkup(row_width=2)
-    expense_types = get_expense_types(lang)
-    callbacks = EXPENSE_TYPE_CALLBACKS.get(lang, EXPENSE_TYPE_CALLBACKS['uk'])
+    
+    # Отримуємо категорії з бази (дефолтні + кастомні)
+    categories = CategoryRepository.get_categories_by_type(user_id, 'expense')
     
     buttons = []
-    for expense_type in expense_types:
-        callback_data = callbacks.get(expense_type, CALLBACK_BACK)
+    for cat in categories:
+        # Перекладаємо назву категорії
+        translated_name = translate_category_name(cat.name, user_id=user_id)
         buttons.append(
             types.InlineKeyboardButton(
-                expense_type,
-                callback_data=callback_data
+                translated_name,
+                callback_data=f'expense_cat_{cat.id}'
             )
         )
     
@@ -320,11 +333,15 @@ def create_language_keyboard(user_id=None, back_callback=CALLBACK_BACK_TO_MAIN):
 
 def create_settings_keyboard(user_id=None, back_callback=CALLBACK_BACK_TO_MAIN):
     """Клавіатура налаштувань."""
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.row(
         types.InlineKeyboardButton(
             get_text('settings_change_language', user_id=user_id),
             callback_data=CALLBACK_SETTINGS_LANGUAGE
+        ),
+        types.InlineKeyboardButton(
+            get_text('settings_manage_categories', user_id=user_id),
+            callback_data='category_management'
         )
     )
     if back_callback != CALLBACK_BACK_TO_MAIN:
@@ -345,4 +362,127 @@ def create_settings_keyboard(user_id=None, back_callback=CALLBACK_BACK_TO_MAIN):
                 callback_data=back_callback
             )
         )
+    return markup
+
+
+def create_category_management_menu(user_id=None):
+    """Меню управління категоріями."""
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.row(
+        types.InlineKeyboardButton(
+            get_text('add_category', user_id=user_id),
+            callback_data='category_add_type_select'
+        ),
+        types.InlineKeyboardButton(
+            get_text('view_categories', user_id=user_id),
+            callback_data='category_view_type_select'
+        )
+    )
+    markup.row(
+        types.InlineKeyboardButton(
+            get_text('menu_main', user_id=user_id),
+            callback_data=CALLBACK_BACK_TO_MAIN
+        ),
+        types.InlineKeyboardButton(
+            get_text('menu_back', user_id=user_id),
+            callback_data=CALLBACK_BACK_TO_SETTINGS
+        )
+    )
+    return markup
+
+
+def create_category_type_selection(user_id=None, action='add'):
+    """Вибір типу категорії (доходи/витрати)."""
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    
+    callback_prefix = f'category_{action}_'
+    
+    markup.add(
+        types.InlineKeyboardButton(
+            get_text('income_categories', user_id=user_id),
+            callback_data=f'{callback_prefix}income'
+        ),
+        types.InlineKeyboardButton(
+            get_text('expense_categories', user_id=user_id),
+            callback_data=f'{callback_prefix}expense'
+        )
+    )
+    markup.row(
+        types.InlineKeyboardButton(
+            get_text('menu_main', user_id=user_id),
+            callback_data=CALLBACK_BACK_TO_MAIN
+        ),
+        types.InlineKeyboardButton(
+            get_text('menu_back', user_id=user_id),
+            callback_data='category_management'
+        )
+    )
+    return markup
+
+
+def create_categories_list(user_id=None, categories=None, category_type='income'):
+    """Список категорій з кнопками видалення."""
+    from locales import translate_category_name
+    
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    
+    if categories:
+        for cat in categories:
+            # Перекладаємо назву категорії
+            translated_name = translate_category_name(cat.name, user_id=user_id)
+            markup.add(
+                types.InlineKeyboardButton(
+                    f"❌ {translated_name}",
+                    callback_data=f'category_delete_{cat.id}'
+                )
+            )
+    
+    markup.add(
+        types.InlineKeyboardButton(
+            get_text('add_category', user_id=user_id),
+            callback_data=f'category_add_{category_type}'
+        )
+    )
+    markup.row(
+        types.InlineKeyboardButton(
+            get_text('menu_main', user_id=user_id),
+            callback_data=CALLBACK_BACK_TO_MAIN
+        ),
+        types.InlineKeyboardButton(
+            get_text('menu_back', user_id=user_id),
+            callback_data='category_view_type_select'
+        )
+    )
+    return markup
+
+
+def create_report_menu(user_id=None):
+    """Меню вибору періоду для звіту."""
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton(
+            get_text('period_today', user_id=user_id),
+            callback_data='detailed_today'
+        ),
+        types.InlineKeyboardButton(
+            get_text('period_week', user_id=user_id),
+            callback_data='detailed_week'
+        )
+    )
+    markup.add(
+        types.InlineKeyboardButton(
+            get_text('period_month', user_id=user_id),
+            callback_data='detailed_month'
+        ),
+        types.InlineKeyboardButton(
+            get_text('period_year', user_id=user_id),
+            callback_data='detailed_year'
+        )
+    )
+    markup.add(
+        types.InlineKeyboardButton(
+            get_text('menu_back', user_id=user_id),
+            callback_data=CALLBACK_BACK_TO_MAIN
+        )
+    )
     return markup

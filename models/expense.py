@@ -16,7 +16,8 @@ class Expense:
     Attributes:
         user_id: ID користувача
         amount: Сума витрати
-        description: Опис/категорія витрати (Їжа, Транспорт, тощо)
+        category_id: ID категорії
+        description: Додатковий опис (опціонально)
         currency: Валюта (UAH, USD, EUR)
         add_date: Дата додавання запису
         update_date: Дата останнього оновлення
@@ -24,7 +25,8 @@ class Expense:
     """
     user_id: int
     amount: float
-    description: str
+    category_id: int
+    description: Optional[str] = None
     currency: str = 'UAH'
     add_date: Optional[str] = None
     update_date: Optional[str] = None
@@ -43,6 +45,7 @@ class Expense:
             'id': self.id,
             'user_id': self.user_id,
             'amount': self.amount,
+            'category_id': self.category_id,
             'description': self.description,
             'currency': self.currency,
             'add_date': self.add_date,
@@ -56,8 +59,8 @@ class Expense:
             id=data.get('id'),
             user_id=data['user_id'],
             amount=data['amount'],
-            description=data['description'],
-            currency=data.get('currency', 'UAH'),
+            category_id=data['category_id'],
+            description=data.get('description'),
             add_date=data.get('add_date'),
             update_date=data.get('update_date')
         )

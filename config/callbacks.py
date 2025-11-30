@@ -45,6 +45,13 @@ CALLBACK_SETTINGS_LANGUAGE = 'settings_language'
 CALLBACK_LANGUAGE_UK = 'lang_uk'
 CALLBACK_LANGUAGE_EN = 'lang_en'
 
+# Звіти
+CALLBACK_REPORT_DETAILED = 'report_detailed'
+CALLBACK_REPORT_QUICK = 'report_quick'
+CALLBACK_REPORT_COMPARISON = 'report_comparison'
+CALLBACK_REPORT_EXPORT = 'report_export'
+CALLBACK_BACK_TO_REPORT_MENU = 'back_to_report_menu'
+
 # Навігація
 CALLBACK_BACK = 'back'
 CALLBACK_CANCEL = 'cancel'
@@ -55,6 +62,9 @@ CALLBACK_BACK_TO_VIEW_GENERAL = 'back_to_view_general'
 CALLBACK_BACK_TO_ADD_INCOME = 'back_to_add_income'
 CALLBACK_BACK_TO_ADD_EXPENSE = 'back_to_add_expense'
 CALLBACK_BACK_TO_SETTINGS = 'back_to_settings'
+
+# Пропустити опис
+CALLBACK_SKIP_DESCRIPTION = 'skip_description'
 
 # Мапінг типів доходів на callback_data
 INCOME_TYPE_CALLBACKS = {

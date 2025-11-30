@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>{{ title }} - Budget Helper</title>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-color: #4CAF50;
+            --danger-color: #f44336;
+            --warning-color: #ff9800;
+            --info-color: #2196F3;
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-primary: #212121;
+            --text-secondary: #757575;
+            --border-color: #e0e0e0;
+            --shadow: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-hover: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding-bottom: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), #45a049);
+            color: white;
+            padding: 1.5rem 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0 0 1rem 1rem;
+            box-shadow: var(--shadow);
+        }
+        
+        header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        header .period {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .search-box {
+            background: var(--card-bg);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: var(--shadow);
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card {
+            background: var(--card-bg);
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .card-icon {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+        
+        .card-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .card-value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card-value.positive {
+            color: var(--primary-color);
+        }
+        
+        .card-value.negative {
+            color: var(--danger-color);
+        }
+        
+        .card-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .section {
+            background: var(--card-bg);
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 1.5rem;
+            background: var(--primary-color);
+            margin-right: 0.75rem;
+            border-radius: 2px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+        }
+        
+        .chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+                padding: 1rem;
+            }
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        thead {
+            background-color: #f5f5f5;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        tbody tr:hover {
+            background-color: #fafafa;
+        }
+        
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: #f9f9f9;
+            border-radius: 0.5rem;
+            border-left: 4px solid var(--primary-color);
+            flex-direction: column;
+            transition: opacity 0.3s ease, background 0.3s ease;
+        }
+        
+        .category-item.disabled {
+            opacity: 0.4;
+            background: #f5f5f5;
+            pointer-events: none;
+        }
+        
+        .category-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .category-item-header:hover {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 0.25rem;
+            padding: 0.25rem;
+            margin: -0.25rem;
+        }
+        
+        .category-item.disabled .category-item-header {
+            cursor: default;
+        }
+        
+        .category-item.disabled .category-item-header:hover {
+            background: transparent;
+        }
+        
+        .toggle-icon {
+            display: inline-block;
+            margin-left: 0.5rem;
+            transition: transform 0.3s ease;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .toggle-icon.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .category-descriptions {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            padding-right: 0.5rem;
+            border-top: 1px solid #e0e0e0;
+            width: 100%;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+        }
+        
+        .category-descriptions.expanded {
+            max-height: 400px;
+            opacity: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Стилізація скролбару для описів категорій */
+        .category-descriptions.expanded::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .category-descriptions.expanded::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .category-descriptions.expanded::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        
+        .category-descriptions.expanded::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* На мобільних зменшуємо висоту для описів */
+        @media (max-width: 768px) {
+            .category-descriptions.expanded {
+                max-height: 300px;
+            }
+        }
+        
+        .description-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 0.5rem 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            gap: 0.75rem;
+        }
+        
+        .description-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .description-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .description-time {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            opacity: 0.8;
+            padding-left: 1.5rem;
+        }
+        
+        .description-amount {
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+        
+        .category-name {
+            font-weight: 500;
+        }
+        
+        .category-amount {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .category-value {
+            font-weight: bold;
+        }
+        
+        .category-percent {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            background: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 1rem;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-color);
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        .tab.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .tab:hover:not(.active) {
+            background: #e8e8e8;
+        }
+        
+        /* Кнопки перемикача вигляду */
+        .toggle-btn {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin: 0 0.25rem;
+        }
+        
+        .toggle-btn:hover {
+            background: #f5f5f5;
+        }
+        
+        .toggle-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        /* Стилі для слайдера динаміки */
+        .dynamics-slider,
+        #dynamicsSlider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+        }
+        
+        #dynamicsSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        #dynamicsSlider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+        
+        #dynamicsSlider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        #dynamicsSlider::-moz-range-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+        
+        #dynamicsControls button:active {
+            transform: scale(0.95);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Стилізація легенди Chart.js */
+        .chartjs-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: #f9f9f9;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .chartjs-legend li {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.3s ease;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chartjs-legend li:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .chartjs-legend li.disabled {
+            opacity: 0.3;
+            text-decoration: line-through;
+            background: #e0e0e0;
+        }
+        
+        .chartjs-legend li.disabled:hover {
+            transform: none;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chartjs-legend li span {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        
+        .chartjs-legend li.disabled span {
+            filter: grayscale(100%);
+            opacity: 0.4;
+        }
+        
+        .comparison {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        
+        .comparison.positive {
+            color: var(--primary-color);
+        }
+        
+        .comparison.negative {
+            color: var(--danger-color);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .badge.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .badge.danger {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .badge.warning {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+        
+        /* Анімації */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .card, .section {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        /* Адаптивність для малих екранів */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.75rem;
+            }
+            
+            header {
+                padding: 1.25rem 0.75rem;
+            }
+            
+            header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .period {
+                font-size: 0.85rem;
+            }
+            
+            .summary-cards {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .card {
+                padding: 1rem;
+            }
+            
+            .card-value {
+                font-size: 1.75rem;
+            }
+            
+            .card-subtitle {
+                font-size: 0.85rem;
+            }
+            
+            .section {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .section-title {
+                font-size: 1.25rem;
+            }
+            
+            .tabs {
+                gap: 0.25rem;
+                padding-bottom: 0.5rem;
+            }
+            
+            .tab {
+                padding: 0.65rem 1rem;
+                font-size: 0.85rem;
+            }
+            
+            /* Кнопки перемикача на мобільному */
+            .toggle-btn {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+                margin: 0 0.15rem;
+            }
+            
+            .chart-container {
+                padding: 0.75rem;
+                margin: 0.75rem 0;
+            }
+            
+            .category-item {
+                padding: 0.65rem;
+                margin-bottom: 0.4rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .category-amount {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            table {
+                font-size: 0.85rem;
+                min-width: 500px;
+            }
+            
+            th, td {
+                padding: 0.5rem 0.35rem;
+            }
+            
+            .search-box input {
+                font-size: 0.9rem;
+                padding: 0.65rem 1rem;
+            }
+            
+            /* Покращення читабельності графіків на мобільному */
+            canvas {
+                max-height: 300px !important;
+            }
+            
+            /* Показати слайдер динаміки на мобільному */
+            #dynamicsControls {
+                display: block !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 1.25rem;
+            }
+            
+            .period {
+                font-size: 0.8rem;
+            }
+            
+            .card-value {
+                font-size: 1.5rem;
+            }
+            
+            .tab {
+                padding: 0.6rem 0.75rem;
+                font-size: 0.8rem;
+            }
+            
+            .toggle-btn {
+                padding: 0.45rem 0.6rem;
+                font-size: 0.75rem;
+                display: block;
+                width: calc(50% - 0.25rem);
+                margin: 0.15rem 0;
+            }
+            
+            .section-title {
+                font-size: 1.1rem;
+            }
+            
+            table {
+                font-size: 0.8rem;
+            }
+            
+            th, td {
+                padding: 0.4rem 0.25rem;
+            }
+            
+            canvas {
+                max-height: 250px !important;
+            }
+            
+            /* Стек кнопок перемикача на дуже малих екранах */
+            .toggle-btn:first-child {
+                margin-right: 0.5rem;
+            }
+        }
+        
+        /* Ландшафтна орієнтація мобільних */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .summary-cards {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            canvas {
+                max-height: 200px !important;
+            }
+        }
+        
+        /* Покращення для дотикових екранів */
+        @media (hover: none) and (pointer: coarse) {
+            .tab, .toggle-btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            .category-item {
+                min-height: 44px;
+            }
+            
+            button {
+                -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>{{ title }}</h1>
+            <div class="period">📅 {{ period_text }}: {{ start_date }} — {{ end_date }}</div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Пошук -->
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 {{ search_placeholder }}">
+        </div>
+
+        <!-- Основні метрики -->
+        <div class="summary-cards">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">💰</span>
+                    <span class="card-title">{{ income_title }}</span>
+                </div>
+                <div class="card-value positive">{{ total_income }} UAH</div>
+                <div class="card-subtitle">{{ income_count }} {{ transactions_text }}</div>
+                {% if income_change %}
+                <div class="comparison {% if income_change > 0 %}positive{% else %}negative{% endif %}">
+                    {% if income_change > 0 %}📈{% else %}📉{% endif %} {{ income_change|abs }} UAH ({{ income_change_percent }}%)
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">💸</span>
+                    <span class="card-title">{{ expense_title }}</span>
+                </div>
+                <div class="card-value negative">{{ total_expense }} UAH</div>
+                <div class="card-subtitle">{{ expense_count }} {{ transactions_text }}</div>
+                {% if expense_change %}
+                <div class="comparison {% if expense_change > 0 %}negative{% else %}positive{% endif %}">
+                    {% if expense_change > 0 %}📈{% else %}📉{% endif %} {{ expense_change|abs }} UAH ({{ expense_change_percent }}%)
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">{% if balance_value >= 0 %}📈{% else %}📉{% endif %}</span>
+                    <span class="card-title">{{ balance_title }}</span>
+                </div>
+                <div class="card-value {% if balance_value >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if balance_value >= 0 %}+{% endif %}{{ balance }} UAH
+                </div>
+                <div class="card-subtitle">
+                    <span class="badge {% if balance_value >= 0 %}success{% else %}danger{% endif %}">
+                        {% if balance_value >= 0 %}✅ {{ positive_balance }}{% else %}⚠️ {{ negative_balance }}{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладки -->
+        <div class="section">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('overview')">📊 {{ overview_tab }}</button>
+                <button class="tab" onclick="showTab('incomes')">💰 {{ incomes_tab }}</button>
+                <button class="tab" onclick="showTab('expenses')">💸 {{ expenses_tab }}</button>
+                <button class="tab" onclick="showTab('transactions')">📋 {{ transactions_tab }}</button>
+            </div>
+
+            <!-- Огляд -->
+            <div id="overview" class="tab-content active">
+                <h3 class="section-title">{{ overview_title }}</h3>
+                <div class="chart-container">
+                    <canvas id="overviewChart"></canvas>
+                </div>
+                
+                <h3 class="section-title" style="margin-top: 2rem;">📊 {{ dynamics_title }}</h3>
+                
+                <!-- Слайдер для вибору періоду на мобільному -->
+                <div id="dynamicsControls" style="margin-bottom: 1rem; display: none;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f5f5f5; border-radius: 0.5rem;">
+                        <button onclick="shiftDynamicsRange(-1)" style="background: white; border: 1px solid #ddd; border-radius: 0.25rem; padding: 0.5rem 0.75rem; cursor: pointer; font-size: 1.2rem;">◀</button>
+                        <input type="range" id="dynamicsSlider" min="0" max="100" value="0" 
+                               class="dynamics-slider"
+                               oninput="updateDynamicsRange(this.value)">
+                        <button onclick="shiftDynamicsRange(1)" style="background: white; border: 1px solid #ddd; border-radius: 0.25rem; padding: 0.5rem 0.75rem; cursor: pointer; font-size: 1.2rem;">▶</button>
+                    </div>
+                    <div style="text-align: center; margin-top: 0.5rem; font-size: 0.85rem; color: #666;">
+                        <span id="dynamicsRangeLabel">Показано днів: всі</span>
+                    </div>
+                </div>
+                
+                <div class="chart-container" id="financialChartContainer">
+                    <canvas id="financialChart"></canvas>
+                </div>
+                
+                <h3 class="section-title" style="margin-top: 2rem;">{{ distribution_title }}</h3>
+                <div class="chart-container">
+                    <canvas id="distributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Доходи -->
+            <div id="incomes" class="tab-content">
+                <h3 class="section-title">{{ income_categories }}</h3>
+                
+                <!-- Перемикач режиму відображення -->
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <button class="toggle-btn active" onclick="toggleIncomeView('simple')" id="incomeSimpleBtn">
+                        {{ simple_view_btn }}
+                    </button>
+                    <button class="toggle-btn" onclick="toggleIncomeView('detailed')" id="incomeDetailedBtn">
+                        {{ detailed_view_btn }}
+                    </button>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="incomeChart"></canvas>
+                </div>
+                
+                <div id="incomeList" style="margin-top: 1.5rem;">
+                    {% if income_data %}
+                        {% for category, data in income_data.items() %}
+                        <div class="category-item">
+                            <div class="category-item-header">
+                                <span class="category-name">{{ data.name }}</span>
+                                <div class="category-amount">
+                                    <span class="category-value">{{ data.amount }} UAH</span>
+                                    <span class="category-percent">{{ data.percent }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-data">{{ no_income_data }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Витрати -->
+            <div id="expenses" class="tab-content">
+                <h3 class="section-title">{{ expense_categories }}</h3>
+                
+                <!-- Перемикач режиму відображення -->
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <button class="toggle-btn active" onclick="toggleExpenseView('simple')" id="expenseSimpleBtn">
+                        {{ simple_view_btn }}
+                    </button>
+                    <button class="toggle-btn" onclick="toggleExpenseView('detailed')" id="expenseDetailedBtn">
+                        {{ detailed_view_btn }}
+                    </button>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+                
+                <div id="expenseList" style="margin-top: 1.5rem;">
+                    {% if expense_data %}
+                        {% for category, data in expense_data.items() %}
+                        <div class="category-item">
+                            <div class="category-item-header">
+                                <span class="category-name">{{ data.name }}</span>
+                                <div class="category-amount">
+                                    <span class="category-value">{{ data.amount }} UAH</span>
+                                    <span class="category-percent">{{ data.percent }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-data">{{ no_expense_data }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Транзакції -->
+            <div id="transactions" class="tab-content">
+                <h3 class="section-title">{{ all_transactions }}</h3>
+                <div class="table-wrapper">
+                    <table id="transactionsTable">
+                        <thead>
+                            <tr>
+                                <th>{{ date_column }}</th>
+                                <th>{{ type_column }}</th>
+                                <th>{{ category_column }}</th>
+                                <th>{{ description_column }}</th>
+                                <th style="text-align: right;">{{ amount_column }}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsBody">
+                            {% if transactions %}
+                                {% for tx in transactions %}
+                                <tr class="transaction-row">
+                                    <td>{{ tx.date }}</td>
+                                    <td>
+                                        <span class="badge {% if tx.type == 'income' %}success{% else %}danger{% endif %}">
+                                            {% if tx.type == 'income' %}💰 {{ income_badge }}{% else %}💸 {{ expense_badge }}{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>{{ tx.category }}</td>
+                                    <td style="color: var(--text-secondary); font-style: {% if tx.description %}normal{% else %}italic{% endif %};">{{ tx.description if tx.description else '—' }}</td>
+                                    <td style="text-align: right; font-weight: bold; color: {% if tx.type == 'income' %}var(--primary-color){% else %}var(--danger-color){% endif %};">
+                                        {% if tx.type == 'income' %}+{% else %}-{% endif %}{{ tx.amount }} UAH
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                                        {{ no_transactions }}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="section">
+            <h3 class="section-title">{{ statistics_title }}</h3>
+            <div class="chart-container">
+                <canvas id="statsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>💼 Budget Helper © 2025</p>
+        <p style="margin-top: 0.5rem;">{{ generated_text }}: {{ generation_date }}</p>
+    </footer>
+
+    <script>
+        // Конфігурація Chart.js
+        Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        Chart.defaults.responsive = true;
+        Chart.defaults.maintainAspectRatio = false;
+
+        // Дані з сервера
+        const reportData = {{ report_data_json|safe }};
+
+        // Кольори
+        const colors = {
+            primary: '#4CAF50',
+            danger: '#f44336',
+            warning: '#ff9800',
+            info: '#2196F3',
+            purple: '#9C27B0',
+            teal: '#009688',
+            pink: '#E91E63',
+            indigo: '#3F51B5'
+        };
+
+        const chartColors = [
+            '#4CAF50', '#2196F3', '#ff9800', '#9C27B0', 
+            '#009688', '#E91E63', '#3F51B5', '#CDDC39',
+            '#00BCD4', '#FF5722', '#795548', '#607D8B'
+        ];
+
+        // Графік огляду (стовпчиковий)
+        const overviewCtx = document.getElementById('overviewChart').getContext('2d');
+        new Chart(overviewCtx, {
+            type: 'bar',
+            data: {
+                labels: ['{{ income_title }}', '{{ expense_title }}'],
+                datasets: [{
+                    label: 'UAH',
+                    data: [reportData.total_income, reportData.total_expense],
+                    backgroundColor: [colors.primary, colors.danger],
+                    borderRadius: 8,
+                    maxBarThickness: 100
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y.toFixed(2) + ' UAH';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + ' UAH';
+                            },
+                            font: {
+                                size: window.innerWidth < 768 ? 10 : 12
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: window.innerWidth < 768 ? 10 : 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Новий графік фінансової динаміки по днях (доходи, витрати, баланс)
+        let financialChartInstance = null;
+        let fullDynamicsData = null;
+        let currentRangeStart = 0;
+        let currentRangeEnd = 0;
+        const daysToShow = 7; // Скільки днів показувати на мобільному
+        
+        if (reportData.daily_dynamics && reportData.daily_dynamics.length > 0) {
+            fullDynamicsData = reportData.daily_dynamics;
+            currentRangeEnd = fullDynamicsData.length;
+            
+            // Налаштування слайдера
+            const slider = document.getElementById('dynamicsSlider');
+            if (slider) {
+                const maxStart = Math.max(0, fullDynamicsData.length - daysToShow);
+                slider.max = maxStart;
+                slider.value = maxStart; // Початково показуємо останні дні
+                currentRangeStart = maxStart;
+            }
+            
+            createFinancialChart();
+        }
+        
+        function createFinancialChart() {
+            if (!fullDynamicsData || fullDynamicsData.length === 0) return;
+            
+            const financialCtx = document.getElementById('financialChart').getContext('2d');
+            
+            // Вибираємо дані для відображення
+            let dataToShow = fullDynamicsData;
+            if (window.innerWidth < 768 && fullDynamicsData.length > daysToShow) {
+                dataToShow = fullDynamicsData.slice(currentRangeStart, currentRangeStart + daysToShow);
+            }
+            
+            const dates = dataToShow.map(d => d.date);
+            const incomes = dataToShow.map(d => d.income);
+            const expenses = dataToShow.map(d => d.expense);
+            const balances = dataToShow.map(d => d.balance);
+            
+            // Оновлюємо підпис діапазону
+            const rangeLabel = document.getElementById('dynamicsRangeLabel');
+            if (rangeLabel) {
+                if (window.innerWidth < 768 && fullDynamicsData.length > daysToShow) {
+                    const startDate = dataToShow[0].date;
+                    const endDate = dataToShow[dataToShow.length - 1].date;
+                    rangeLabel.textContent = `${startDate} — ${endDate}`;
+                } else {
+                    rangeLabel.textContent = `Показано днів: всі (${fullDynamicsData.length})`;
+                }
+            }
+            
+            // Видаляємо попередній графік
+            if (financialChartInstance) {
+                financialChartInstance.destroy();
+            }
+            
+            financialChartInstance = new Chart(financialCtx, {
+                type: 'bar',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: '{{ income_title }}',
+                            data: incomes,
+                            backgroundColor: colors.primary,
+                            borderRadius: 4,
+                            order: 2
+                        },
+                        {
+                            label: '{{ expense_title }}',
+                            data: expenses,
+                            backgroundColor: colors.danger,
+                            borderRadius: 4,
+                            order: 2
+                        },
+                        {
+                            label: '{{ balance_title }}',
+                            data: balances,
+                            type: 'line',
+                            borderColor: '#2563eb',
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#2563eb',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            order: 1,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                },
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        if (label.includes('{{ balance_title }}')) {
+                                            label += (context.parsed.y >= 0 ? '+' : '') + context.parsed.y.toFixed(2) + ' UAH';
+                                        } else {
+                                            label += context.parsed.y.toFixed(2) + ' UAH';
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                maxRotation: window.innerWidth < 768 ? 90 : 45,
+                                minRotation: window.innerWidth < 768 ? 45 : 45,
+                                font: {
+                                    size: window.innerWidth < 768 ? 10 : 12
+                                }
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '{{ income_title }} / {{ expense_title }}'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString() + ' UAH';
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '{{ balance_title }}'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return (value >= 0 ? '+' : '') + value.toLocaleString() + ' UAH';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Функції керування слайдером динаміки
+        function updateDynamicsRange(value) {
+            currentRangeStart = parseInt(value);
+            createFinancialChart();
+        }
+        
+        function shiftDynamicsRange(direction) {
+            const slider = document.getElementById('dynamicsSlider');
+            if (!slider) return;
+            
+            const maxStart = Math.max(0, fullDynamicsData.length - daysToShow);
+            let newValue = currentRangeStart + direction;
+            
+            if (newValue < 0) newValue = 0;
+            if (newValue > maxStart) newValue = maxStart;
+            
+            slider.value = newValue;
+            currentRangeStart = newValue;
+            createFinancialChart();
+        }
+        
+        // Оновлення при зміні розміру вікна
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                if (fullDynamicsData) {
+                    createFinancialChart();
+                }
+            }, 250);
+        });
+
+        // Графік розподілу (пончик)
+        const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+        new Chart(distributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['{{ income_title }}', '{{ expense_title }}'],
+                datasets: [{
+                    data: [reportData.total_income, reportData.total_expense],
+                    backgroundColor: [colors.primary, colors.danger],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: window.innerWidth < 768 ? 10 : 20,
+                            font: {
+                                size: window.innerWidth < 768 ? 11 : 14
+                            },
+                            boxWidth: window.innerWidth < 768 ? 12 : 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return context.label + ': ' + context.parsed.toFixed(2) + ' UAH (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Змінні для збереження Chart instances
+        let incomeChartInstance = null;
+        let expenseChartInstance = null;
+        
+        // Функція для створення графіка доходів
+        function createIncomeChart(isDetailed = false) {
+            const data = isDetailed ? reportData.income_data_detailed : reportData.income_data;
+            
+            if (!data || data.length === 0) return;
+            
+            const incomeCtx = document.getElementById('incomeChart').getContext('2d');
+            const incomeLabels = [];
+            const incomeValues = [];
+            const incomePercents = [];
+            
+            data.forEach(item => {
+                // У детальному вигляді додаємо кількість описів до назви категорії
+                let labelText = item.name;
+                if (isDetailed && item.items && item.items.length > 0) {
+                    labelText += ` (${item.items.length})`;
+                }
+                incomeLabels.push(labelText);
+                incomeValues.push(parseFloat(item.amount));
+                incomePercents.push(parseFloat(item.percent));
+            });
+            
+            // Видаляємо попередній графік якщо існує
+            if (incomeChartInstance) {
+                incomeChartInstance.destroy();
+            }
+            
+            incomeChartInstance = new Chart(incomeCtx, {
+                type: 'pie',
+                data: {
+                    labels: incomeLabels,
+                    datasets: [{
+                        data: incomeValues,
+                        backgroundColor: chartColors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: window.innerWidth < 768 ? 'bottom' : 'right',
+                            labels: {
+                                padding: window.innerWidth < 768 ? 10 : 15,
+                                font: {
+                                    size: window.innerWidth < 768 ? 10 : 12,
+                                    weight: '500'
+                                },
+                                boxWidth: window.innerWidth < 768 ? 12 : 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const meta = chart.getDatasetMeta(0);
+                                            const style = meta.controller.getStyle(i);
+                                            return {
+                                                text: label,
+                                                fillStyle: style.backgroundColor,
+                                                strokeStyle: style.borderColor,
+                                                lineWidth: style.borderWidth,
+                                                hidden: meta.data[i].hidden,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            },
+                            onClick: function(e, legendItem, legend) {
+                                const index = legendItem.index;
+                                const chart = legend.chart;
+                                const meta = chart.getDatasetMeta(0);
+                                
+                                // Перемикаємо видимість сегмента
+                                meta.data[index].hidden = !meta.data[index].hidden;
+                                chart.update();
+                                
+                                // Оновлюємо стан категорії в списку
+                                toggleCategoryState('income', index, meta.data[index].hidden);
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const percent = incomePercents[context.dataIndex];
+                                    let label = context.label + ': ' + context.parsed.toFixed(2) + ' UAH (' + percent + '%)';
+                                    
+                                    // Якщо це детальний вигляд, додаємо описи
+                                    if (isDetailed && data[context.dataIndex].items && data[context.dataIndex].items.length > 0) {
+                                        const items = data[context.dataIndex].items;
+                                        return [label, '─'.repeat(30), ...items.slice(0, 5).map(item => 
+                                            `📝 ${item.description} - ${item.amount.toFixed(2)} UAH`
+                                        ), items.length > 5 ? `... та ще ${items.length - 5}` : ''];
+                                    }
+                                    
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Функція для створення графіка витрат
+        function createExpenseChart(isDetailed = false) {
+            const data = isDetailed ? reportData.expense_data_detailed : reportData.expense_data;
+            
+            if (!data || data.length === 0) return;
+            
+            const expenseCtx = document.getElementById('expenseChart').getContext('2d');
+            const expenseLabels = [];
+            const expenseValues = [];
+            const expensePercents = [];
+            
+            data.forEach(item => {
+                // У детальному вигляді додаємо кількість описів до назви категорії
+                let labelText = item.name;
+                if (isDetailed && item.items && item.items.length > 0) {
+                    labelText += ` (${item.items.length})`;
+                }
+                expenseLabels.push(labelText);
+                expenseValues.push(parseFloat(item.amount));
+                expensePercents.push(parseFloat(item.percent));
+            });
+            
+            // Видаляємо попередній графік якщо існує
+            if (expenseChartInstance) {
+                expenseChartInstance.destroy();
+            }
+            
+            expenseChartInstance = new Chart(expenseCtx, {
+                type: 'pie',
+                data: {
+                    labels: expenseLabels,
+                    datasets: [{
+                        data: expenseValues,
+                        backgroundColor: chartColors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: window.innerWidth < 768 ? 'bottom' : 'right',
+                            labels: {
+                                padding: window.innerWidth < 768 ? 10 : 15,
+                                font: {
+                                    size: window.innerWidth < 768 ? 10 : 12,
+                                    weight: '500'
+                                },
+                                boxWidth: window.innerWidth < 768 ? 12 : 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const meta = chart.getDatasetMeta(0);
+                                            const style = meta.controller.getStyle(i);
+                                            return {
+                                                text: label,
+                                                fillStyle: style.backgroundColor,
+                                                strokeStyle: style.borderColor,
+                                                lineWidth: style.borderWidth,
+                                                hidden: meta.data[i].hidden,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            },
+                            onClick: function(e, legendItem, legend) {
+                                const index = legendItem.index;
+                                const chart = legend.chart;
+                                const meta = chart.getDatasetMeta(0);
+                                
+                                // Перемикаємо видимість сегмента
+                                meta.data[index].hidden = !meta.data[index].hidden;
+                                chart.update();
+                                
+                                // Оновлюємо стан категорії в списку
+                                toggleCategoryState('expense', index, meta.data[index].hidden);
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const percent = expensePercents[context.dataIndex];
+                                    let label = context.label + ': ' + context.parsed.toFixed(2) + ' UAH (' + percent + '%)';
+                                    
+                                    // Якщо це детальний вигляд, додаємо описи
+                                    if (isDetailed && data[context.dataIndex].items && data[context.dataIndex].items.length > 0) {
+                                        const items = data[context.dataIndex].items;
+                                        return [label, '─'.repeat(30), ...items.slice(0, 5).map(item => 
+                                            `📝 ${item.description} - ${item.amount.toFixed(2)} UAH`
+                                        ), items.length > 5 ? `... та ще ${items.length - 5}` : ''];
+                                    }
+                                    
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Функції перемикання вигляду
+        function toggleIncomeView(view) {
+            const simpleBtn = document.getElementById('incomeSimpleBtn');
+            const detailedBtn = document.getElementById('incomeDetailedBtn');
+            
+            if (view === 'simple') {
+                simpleBtn.classList.add('active');
+                detailedBtn.classList.remove('active');
+                createIncomeChart(false);
+                updateIncomeList(false);
+            } else {
+                simpleBtn.classList.remove('active');
+                detailedBtn.classList.add('active');
+                createIncomeChart(true);
+                updateIncomeList(true);
+            }
+        }
+        
+        function toggleExpenseView(view) {
+            const simpleBtn = document.getElementById('expenseSimpleBtn');
+            const detailedBtn = document.getElementById('expenseDetailedBtn');
+            
+            if (view === 'simple') {
+                simpleBtn.classList.add('active');
+                detailedBtn.classList.remove('active');
+                createExpenseChart(false);
+                updateExpenseList(false);
+            } else {
+                simpleBtn.classList.remove('active');
+                detailedBtn.classList.add('active');
+                createExpenseChart(true);
+                updateExpenseList(true);
+            }
+        }
+        
+        // Функції оновлення списку категорій
+        function updateIncomeList(isDetailed) {
+            const data = isDetailed ? reportData.income_data_detailed : reportData.income_data;
+            const listElement = document.getElementById('incomeList');
+            
+            if (!data || data.length === 0) {
+                listElement.innerHTML = '<div class="no-data">{{ no_income_data }}</div>';
+                return;
+            }
+            
+            let html = '';
+            data.forEach((item, index) => {
+                const hasItems = isDetailed && item.items && item.items.length > 0;
+                html += `
+                    <div class="category-item">
+                        <div class="category-item-header" ${hasItems ? `onclick="toggleCategoryDetails('income-${index}')"` : ''}>
+                            <span class="category-name">${item.name}${hasItems ? ` <span class="toggle-icon" id="toggle-income-${index}">▶</span>` : ''}</span>
+                            <div class="category-amount">
+                                <span class="category-value">${item.amount} UAH</span>
+                                <span class="category-percent">${item.percent}%</span>
+                            </div>
+                        </div>`;
+                
+                // Якщо детальний вигляд і є описи
+                if (hasItems) {
+                    html += `<div class="category-descriptions" id="details-income-${index}">`;
+                    item.items.forEach(desc => {
+                        // Форматуємо час
+                        const timeStr = desc.add_date ? new Date(desc.add_date).toLocaleString('uk-UA', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) : '';
+                        
+                        html += `
+                            <div class="description-item">
+                                <div class="description-text">
+                                    <div class="description-content">
+                                        <span>📝</span>
+                                        <span>${desc.description}</span>
+                                    </div>
+                                    ${timeStr ? `<div class="description-time">${timeStr}</div>` : ''}
+                                </div>
+                                <span class="description-amount">${desc.amount.toFixed(2)} UAH</span>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+            });
+            listElement.innerHTML = html;
+        }
+        
+        function updateExpenseList(isDetailed) {
+            const data = isDetailed ? reportData.expense_data_detailed : reportData.expense_data;
+            const listElement = document.getElementById('expenseList');
+            
+            if (!data || data.length === 0) {
+                listElement.innerHTML = '<div class="no-data">{{ no_expense_data }}</div>';
+                return;
+            }
+            
+            let html = '';
+            data.forEach((item, index) => {
+                const hasItems = isDetailed && item.items && item.items.length > 0;
+                html += `
+                    <div class="category-item">
+                        <div class="category-item-header" ${hasItems ? `onclick="toggleCategoryDetails('expense-${index}')"` : ''}>
+                            <span class="category-name">${item.name}${hasItems ? ` <span class="toggle-icon" id="toggle-expense-${index}">▶</span>` : ''}</span>
+                            <div class="category-amount">
+                                <span class="category-value">${item.amount} UAH</span>
+                                <span class="category-percent">${item.percent}%</span>
+                            </div>
+                        </div>`;
+                
+                // Якщо детальний вигляд і є описи
+                if (hasItems) {
+                    html += `<div class="category-descriptions" id="details-expense-${index}">`;
+                    item.items.forEach(desc => {
+                        // Форматуємо час
+                        const timeStr = desc.add_date ? new Date(desc.add_date).toLocaleString('uk-UA', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) : '';
+                        
+                        html += `
+                            <div class="description-item">
+                                <div class="description-text">
+                                    <div class="description-content">
+                                        <span>📝</span>
+                                        <span>${desc.description}</span>
+                                    </div>
+                                    ${timeStr ? `<div class="description-time">${timeStr}</div>` : ''}
+                                </div>
+                                <span class="description-amount">${desc.amount.toFixed(2)} UAH</span>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+            });
+            listElement.innerHTML = html;
+        }
+        
+        // Функція для розгортання/згортання деталей категорії
+        function toggleCategoryDetails(categoryId) {
+            const detailsElement = document.getElementById('details-' + categoryId);
+            const toggleIcon = document.getElementById('toggle-' + categoryId);
+            
+            if (detailsElement && toggleIcon) {
+                detailsElement.classList.toggle('expanded');
+                toggleIcon.classList.toggle('expanded');
+            }
+        }
+        
+        // Функція для перемикання стану категорії (при кліку на легенду)
+        function toggleCategoryState(type, index, isHidden) {
+            const categoryItems = document.querySelectorAll(`#${type}List .category-item`);
+            
+            if (categoryItems[index]) {
+                if (isHidden) {
+                    categoryItems[index].classList.add('disabled');
+                    // Згортаємо опис якщо він був розгорнутий
+                    const detailsElement = document.getElementById(`details-${type}-${index}`);
+                    const toggleIcon = document.getElementById(`toggle-${type}-${index}`);
+                    if (detailsElement && detailsElement.classList.contains('expanded')) {
+                        detailsElement.classList.remove('expanded');
+                        if (toggleIcon) toggleIcon.classList.remove('expanded');
+                    }
+                } else {
+                    categoryItems[index].classList.remove('disabled');
+                }
+            }
+        }
+        
+        // Ініціалізація графіків зі спрощеним виглядом
+        createIncomeChart(false);
+        createExpenseChart(false);
+
+        // Графік статистики
+        const statsCtx = document.getElementById('statsChart').getContext('2d');
+        new Chart(statsCtx, {
+            type: 'bar',
+            data: {
+                labels: ['{{ transactions_text }}', '{{ income_count_text }}', '{{ expense_count_text }}'],
+                datasets: [{
+                    label: '{{ count_text }}',
+                    data: [reportData.total_transactions, reportData.income_count, reportData.expense_count],
+                    backgroundColor: [colors.info, colors.primary, colors.danger],
+                    borderRadius: 8,
+                    maxBarThickness: 100
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: {
+                                size: window.innerWidth < 768 ? 10 : 12
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: window.innerWidth < 768 ? 9 : 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Перемикання вкладок
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // Пошук по транзакціях
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('.transaction-row');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+
+            // Також фільтруємо категорії
+            const categoryItems = document.querySelectorAll('.category-item');
+            categoryItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>

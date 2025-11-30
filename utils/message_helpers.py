@@ -3,9 +3,16 @@
 Helper функції для роботи з повідомленнями та inline-клавіатурами.
 """
 
+import logging
 from telebot import types
+from telebot.apihelper import ApiTelegramException
 from keyboards import main_menu, back_button
 from locales import get_text
+
+logger = logging.getLogger(__name__)
+
+# Константи для обробки помилок
+MESSAGE_NOT_MODIFIED = "message is not modified"
 
 
 def send_main_menu(bot, chat_id, text_or_key='back_to_main', message_id=None, user_id=None):
@@ -34,7 +41,9 @@ def send_main_menu(bot, chat_id, text_or_key='back_to_main', message_id=None, us
                 message_id=message_id,
                 reply_markup=markup
             )
-        except Exception:
+        except ApiTelegramException as e:
+            if MESSAGE_NOT_MODIFIED not in str(e).lower():
+                logger.warning(f"Failed to edit message in send_main_menu: {e}")
             bot.send_message(chat_id, text, reply_markup=markup)
     else:
         bot.send_message(chat_id, text, reply_markup=markup)
@@ -60,7 +69,9 @@ def send_back_button(bot, chat_id, text, message_id=None):
                 message_id=message_id,
                 reply_markup=markup
             )
-        except Exception:
+        except ApiTelegramException as e:
+            if MESSAGE_NOT_MODIFIED not in str(e).lower():
+                logger.warning(f"Failed to edit message in send_back_button: {e}")
             bot.send_message(chat_id, text, reply_markup=markup)
     else:
         bot.send_message(chat_id, text, reply_markup=markup)
@@ -85,7 +96,9 @@ def send_with_keyboard(bot, chat_id, text, keyboard, message_id=None):
                 message_id=message_id,
                 reply_markup=keyboard
             )
-        except Exception:
+        except ApiTelegramException as e:
+            if MESSAGE_NOT_MODIFIED not in str(e).lower():
+                logger.warning(f"Failed to edit message: {e}")
             bot.send_message(chat_id, text, reply_markup=keyboard)
     else:
         bot.send_message(chat_id, text, reply_markup=keyboard)
@@ -162,5 +175,7 @@ def edit_or_send_message(bot, chat_id, message_id, text, reply_markup=None):
             message_id=message_id,
             reply_markup=reply_markup
         )
-    except Exception:
+    except ApiTelegramException as e:
+        if MESSAGE_NOT_MODIFIED not in str(e).lower():
+            logger.warning(f"Failed to edit message in edit_or_send_message: {e}")
         bot.send_message(chat_id, text, reply_markup=reply_markup)

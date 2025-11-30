@@ -7,23 +7,25 @@
 from datetime import datetime
 from threading import Lock
 from typing import List, Optional
-from .db_manager import get_connection, ensure_user
+from .db_manager import get_connection, ensure_user, generate_uuid
 from .utils import get_date_range_for_period
 from models import Expense
 from config.constants import DEFAULT_CURRENCY
+from locales import translate_category_name
 
 _lock = Lock()
 
 
-def add_expense(user_id: int, amount: float, description: str, currency: str = DEFAULT_CURRENCY) -> Expense:
+def add_expense(user_id: int, amount: float, category_id: int, description: str = None, add_date: str = None) -> Expense:
     """
     Додати нову витрату для користувача.
     
     Args:
         user_id: ID користувача Telegram
         amount: Сума витрати
-        description: Опис/категорія витрати
-        currency: Валюта (за замовчуванням UAH)
+        category_id: ID категорії
+        description: Опис (опціонально)
+        add_date: Дата додавання (опціонально, за замовчуванням - поточна)
     
     Returns:
         Expense: Створений об'єкт Expense з ID
@@ -31,21 +33,26 @@ def add_expense(user_id: int, amount: float, description: str, currency: str = D
     expense = Expense(
         user_id=user_id,
         amount=amount,
-        description=description,
-        currency=currency
+        category_id=category_id,
+        description=description
     )
+    
+    # Якщо передана дата, використовуємо її
+    if add_date:
+        expense.add_date = add_date
+        expense.update_date = add_date
     
     with _lock:
         with get_connection() as conn:
             cursor = conn.cursor()
             ensure_user(cursor, user_id)
+            expense.id = generate_uuid()
             cursor.execute('''
-                INSERT INTO expenses (user_id, amount, description, add_date, update_date)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (expense.user_id, expense.amount, expense.description,
+                INSERT INTO expenses (id, user_id, amount, category_id, description, add_date, update_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (expense.id, expense.user_id, expense.amount, expense.category_id, expense.description,
                   expense.add_date, expense.update_date))
             conn.commit()
-            expense.id = cursor.lastrowid
     
     return expense
 
@@ -64,7 +71,7 @@ def get_expense_by_id(expense_id: int) -> Optional[Expense]:
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT id, user_id, amount, description, add_date, update_date
+                SELECT id, user_id, amount, category_id, description, add_date, update_date
                 FROM expenses WHERE id = ?
             ''', (expense_id,))
             row = cursor.fetchone()
@@ -74,10 +81,10 @@ def get_expense_by_id(expense_id: int) -> Optional[Expense]:
                     'id': row[0],
                     'user_id': row[1],
                     'amount': row[2],
-                    'description': row[3],
-                    'currency': DEFAULT_CURRENCY,
-                    'add_date': row[4],
-                    'update_date': row[5]
+                    'category_id': row[3],
+                    'description': row[4],
+                    'add_date': row[5],
+                    'update_date': row[6]
                 })
             return None
 
@@ -96,7 +103,7 @@ def get_all_expenses(user_id: int) -> List[Expense]:
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT id, user_id, amount, description, add_date, update_date
+                SELECT id, user_id, amount, category_id, description, add_date, update_date
                 FROM expenses WHERE user_id = ?
                 ORDER BY add_date DESC
             ''', (user_id,))
@@ -106,10 +113,10 @@ def get_all_expenses(user_id: int) -> List[Expense]:
                 'id': row[0],
                 'user_id': row[1],
                 'amount': row[2],
-                'description': row[3],
-                'currency': DEFAULT_CURRENCY,
-                'add_date': row[4],
-                'update_date': row[5]
+                'category_id': row[3],
+                'description': row[4],
+                'add_date': row[5],
+                'update_date': row[6]
             }) for row in rows]
 
 
@@ -128,7 +135,7 @@ def get_expenses_aggregated(user_id: int, period: str) -> dict:
     
     # Використовуємо однаковий запит для всіх періодів
     query = '''
-        SELECT id, user_id, amount, description, add_date, update_date
+        SELECT id, user_id, amount, category_id, description, add_date, update_date
         FROM expenses
         WHERE user_id = ? AND add_date BETWEEN ? AND ?
         ORDER BY add_date DESC
@@ -145,20 +152,25 @@ def get_expenses_aggregated(user_id: int, period: str) -> dict:
                 'id': row[0],
                 'user_id': row[1],
                 'amount': row[2],
-                'description': row[3],
-                'currency': DEFAULT_CURRENCY,
-                'add_date': row[4],
-                'update_date': row[5]
+                'category_id': row[3],
+                'description': row[4],
+                'add_date': row[5],
+                'update_date': row[6]
             }) for row in rows]
+            
+            # Отримуємо категорії для агрегування
+            from database import CategoryRepository
             
             # Агрегування по категоріях
             aggregated = {}
             total = 0.0
             for expense in expenses:
-                if expense.description not in aggregated:
-                    aggregated[expense.description] = 0.0
-                aggregated[expense.description] += expense.amount
-                total += expense.amount
+                category = CategoryRepository.get_category_by_id(expense.category_id)
+                category_name = category.name if category else 'Інше'
+                if category_name not in aggregated:
+                    aggregated[category_name] = 0.0
+                aggregated[category_name] = round(aggregated[category_name] + expense.amount, 2)
+                total = round(total + expense.amount, 2)
             
             return {
                 'expenses': expenses,
