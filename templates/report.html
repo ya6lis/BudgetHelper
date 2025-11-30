@@ -276,19 +276,23 @@
         }
         
         .category-descriptions {
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            padding-right: 0.5rem;
-            border-top: 1px solid #e0e0e0;
             width: 100%;
             max-height: 0;
+            margin-top: 0;
+            padding-top: 0;
+            padding-right: 0;
+            border-top: none;
             overflow: hidden;
-            transition: max-height 0.3s ease, opacity 0.3s ease;
+            transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
             opacity: 0;
         }
         
         .category-descriptions.expanded {
             max-height: 400px;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            padding-right: 0.5rem;
+            border-top: 1px solid #e0e0e0;
             opacity: 1;
             overflow-y: auto;
             overflow-x: hidden;
@@ -815,11 +819,11 @@
                     <span class="card-icon">💰</span>
                     <span class="card-title">{{ income_title }}</span>
                 </div>
-                <div class="card-value positive">{{ total_income }} UAH</div>
+                <div class="card-value positive">{{ total_income }} {{ currency_symbol }}</div>
                 <div class="card-subtitle">{{ income_count }} {{ transactions_text }}</div>
                 {% if income_change %}
                 <div class="comparison {% if income_change > 0 %}positive{% else %}negative{% endif %}">
-                    {% if income_change > 0 %}📈{% else %}📉{% endif %} {{ income_change|abs }} UAH ({{ income_change_percent }}%)
+                    {% if income_change > 0 %}📈{% else %}📉{% endif %} {{ income_change|abs }} {{ currency_symbol }} ({{ income_change_percent }}%)
                 </div>
                 {% endif %}
             </div>
@@ -829,11 +833,11 @@
                     <span class="card-icon">💸</span>
                     <span class="card-title">{{ expense_title }}</span>
                 </div>
-                <div class="card-value negative">{{ total_expense }} UAH</div>
+                <div class="card-value negative">{{ total_expense }} {{ currency_symbol }}</div>
                 <div class="card-subtitle">{{ expense_count }} {{ transactions_text }}</div>
                 {% if expense_change %}
                 <div class="comparison {% if expense_change > 0 %}negative{% else %}positive{% endif %}">
-                    {% if expense_change > 0 %}📈{% else %}📉{% endif %} {{ expense_change|abs }} UAH ({{ expense_change_percent }}%)
+                    {% if expense_change > 0 %}📈{% else %}📉{% endif %} {{ expense_change|abs }} {{ currency_symbol }} ({{ expense_change_percent }}%)
                 </div>
                 {% endif %}
             </div>
@@ -844,7 +848,7 @@
                     <span class="card-title">{{ balance_title }}</span>
                 </div>
                 <div class="card-value {% if balance_value >= 0 %}positive{% else %}negative{% endif %}">
-                    {% if balance_value >= 0 %}+{% endif %}{{ balance }} UAH
+                    {% if balance_value >= 0 %}+{% endif %}{{ balance }} {{ currency_symbol }}
                 </div>
                 <div class="card-subtitle">
                     <span class="badge {% if balance_value >= 0 %}success{% else %}danger{% endif %}">
@@ -921,7 +925,7 @@
                             <div class="category-item-header">
                                 <span class="category-name">{{ data.name }}</span>
                                 <div class="category-amount">
-                                    <span class="category-value">{{ data.amount }} UAH</span>
+                                    <span class="category-value">{{ data.amount }} {{ currency_symbol }}</span>
                                     <span class="category-percent">{{ data.percent }}%</span>
                                 </div>
                             </div>
@@ -958,7 +962,7 @@
                             <div class="category-item-header">
                                 <span class="category-name">{{ data.name }}</span>
                                 <div class="category-amount">
-                                    <span class="category-value">{{ data.amount }} UAH</span>
+                                    <span class="category-value">{{ data.amount }} {{ currency_symbol }}</span>
                                     <span class="category-percent">{{ data.percent }}%</span>
                                 </div>
                             </div>
@@ -997,7 +1001,7 @@
                                     <td>{{ tx.category }}</td>
                                     <td style="color: var(--text-secondary); font-style: {% if tx.description %}normal{% else %}italic{% endif %};">{{ tx.description if tx.description else '—' }}</td>
                                     <td style="text-align: right; font-weight: bold; color: {% if tx.type == 'income' %}var(--primary-color){% else %}var(--danger-color){% endif %};">
-                                        {% if tx.type == 'income' %}+{% else %}-{% endif %}{{ tx.amount }} UAH
+                                        {% if tx.type == 'income' %}+{% else %}-{% endif %}{{ tx.amount }} {{ tx.currency }}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -1037,6 +1041,106 @@
         // Дані з сервера
         const reportData = {{ report_data_json|safe }};
 
+        // Символи валют
+        const currencySymbols = {
+            'UAH': '₴',
+            'USD': '$',
+            'EUR': '€'
+        };
+        
+        // Отримання курсів валют з NBU API
+        window.exchangeRates = {};
+        
+        async function fetchExchangeRates() {
+            try {
+                const response = await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
+                const data = await response.json();
+                
+                // Зберігаємо курси для USD та EUR
+                data.forEach(item => {
+                    if (item.cc === 'USD') {
+                        window.exchangeRates['USD'] = item.rate;
+                    } else if (item.cc === 'EUR') {
+                        window.exchangeRates['EUR'] = item.rate;
+                    }
+                });
+                
+                // UAH до UAH = 1
+                window.exchangeRates['UAH'] = 1;
+                
+                console.log('Exchange rates loaded:', window.exchangeRates);
+            } catch (error) {
+                console.error('Failed to fetch exchange rates:', error);
+                // Fallback до дефолтних курсів
+                window.exchangeRates = {
+                    'UAH': 1,
+                    'USD': 42,
+                    'EUR': 49
+                };
+            }
+        }
+        
+        // Функція для конвертації між валютами
+        // NBU API дає курси до гривні, тому конвертуємо через гривню
+        function convertCurrency(amount, fromCurrency, toCurrency) {
+            if (fromCurrency === toCurrency) {
+                return amount;
+            }
+            
+            const fromRate = window.exchangeRates[fromCurrency] || 1;
+            const toRate = window.exchangeRates[toCurrency] || 1;
+            
+            // Конвертуємо: amount * (fromRate / toRate)
+            // Наприклад: 100 USD -> UAH -> EUR
+            // 100 * (42 / 1) = 4200 UAH
+            // 4200 * (1 / 49) = 85.71 EUR
+            // Або коротко: 100 * (42 / 49) = 85.71 EUR
+            return amount * (fromRate / toRate);
+        }
+        
+        // Функція для форматування валюти в tooltips
+        function formatCurrencyTooltip(categoryKey, amount, userCurrency) {
+            const currencies = reportData.income_by_category_currency[categoryKey] || reportData.expense_by_category_currency[categoryKey] || {};
+            const currencyKeys = Object.keys(currencies);
+            
+            // Якщо одна валюта
+            if (currencyKeys.length === 1) {
+                const curr = currencyKeys[0];
+                const symbol = currencySymbols[curr] || curr;
+                const currAmount = currencies[curr];
+                
+                // Якщо це дефолтна валюта - показуємо без конвертації
+                if (curr === userCurrency) {
+                    return `${currAmount.toFixed(2)} ${symbol}`;
+                } else {
+                    // Конвертуємо в дефолтну
+                    const converted = convertCurrency(currAmount, curr, userCurrency);
+                    return `${currAmount.toFixed(2)} ${symbol} (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})`;
+                }
+            }
+            
+            // Якщо декілька валют - показуємо всі
+            const lines = [];
+            let totalConverted = 0;
+            
+            currencyKeys.forEach(curr => {
+                const currAmount = currencies[curr];
+                const symbol = currencySymbols[curr] || curr;
+                
+                if (curr !== userCurrency) {
+                    const converted = convertCurrency(currAmount, curr, userCurrency);
+                    totalConverted += converted;
+                    lines.push(`  ${currAmount.toFixed(2)} ${symbol} (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})`);
+                } else {
+                    totalConverted += currAmount;
+                    lines.push(`  ${currAmount.toFixed(2)} ${symbol}`);
+                }
+            });
+            
+            lines.push(`{{ total_text }}: ≈ ${totalConverted.toFixed(2)} ${currencySymbols[userCurrency]}`);
+            return lines;
+        }
+
         // Кольори
         const colors = {
             primary: '#4CAF50',
@@ -1062,7 +1166,7 @@
             data: {
                 labels: ['{{ income_title }}', '{{ expense_title }}'],
                 datasets: [{
-                    label: 'UAH',
+                    label: '{{ currency }}',
                     data: [reportData.total_income, reportData.total_expense],
                     backgroundColor: [colors.primary, colors.danger],
                     borderRadius: 8,
@@ -1079,7 +1183,44 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                return context.parsed.y.toFixed(2) + ' UAH';
+                                const userCurrency = reportData.user_currency || 'UAH';
+                                const dataType = context.dataIndex === 0 ? 'income' : 'expense';
+                                const byCurrency = dataType === 'income' ? reportData.income_by_currency : reportData.expense_by_currency;
+                                
+                                if (!byCurrency || Object.keys(byCurrency).length === 0) {
+                                    return context.parsed.y.toFixed(2) + ' ' + currencySymbols[userCurrency];
+                                }
+                                
+                                const currencyKeys = Object.keys(byCurrency);
+                                if (currencyKeys.length === 1) {
+                                    const curr = currencyKeys[0];
+                                    const amount = byCurrency[curr];
+                                    const symbol = currencySymbols[curr] || curr;
+                                    if (curr === userCurrency) {
+                                        return amount.toFixed(2) + ' ' + symbol;
+                                    } else {
+                                        const converted = convertCurrency(amount, curr, userCurrency);
+                                        return amount.toFixed(2) + ' ' + symbol + ' (≈ ' + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ')';
+                                    }
+                                }
+                                
+                                // Multiple currencies
+                                const lines = [];
+                                let totalConverted = 0;
+                                currencyKeys.forEach(curr => {
+                                    const amount = byCurrency[curr];
+                                    const symbol = currencySymbols[curr] || curr;
+                                    if (curr !== userCurrency) {
+                                        const converted = convertCurrency(amount, curr, userCurrency);
+                                        totalConverted += converted;
+                                        lines.push('  ' + amount.toFixed(2) + ' ' + symbol + ' (≈ ' + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ')');
+                                    } else {
+                                        totalConverted += amount;
+                                        lines.push('  ' + amount.toFixed(2) + ' ' + symbol);
+                                    }
+                                });
+                                lines.push('{{ total_text }}: ≈ ' + totalConverted.toFixed(2) + ' ' + currencySymbols[userCurrency]);
+                                return lines;
                             }
                         }
                     }
@@ -1089,7 +1230,7 @@
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return value.toLocaleString() + ' UAH';
+                                return value.toLocaleString() + ' {{ currency_symbol }}';
                             },
                             font: {
                                 size: window.innerWidth < 768 ? 10 : 12
@@ -1221,18 +1362,139 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
+                                    const dataIndex = context.dataIndex;
+                                    const dayData = dataToShow[dataIndex];
+                                    const userCurrency = reportData.user_currency || 'UAH';
+                                    
                                     let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        if (label.includes('{{ balance_title }}')) {
-                                            label += (context.parsed.y >= 0 ? '+' : '') + context.parsed.y.toFixed(2) + ' UAH';
-                                        } else {
-                                            label += context.parsed.y.toFixed(2) + ' UAH';
+                                    
+                                    // Для балансу
+                                    if (label.includes('{{ balance_title }}')) {
+                                        if (!dayData.balance_by_currency || Object.keys(dayData.balance_by_currency).length === 0) {
+                                            const value = context.parsed.y;
+                                            return label + ': ' + (value >= 0 ? '+' : '') + value.toFixed(2) + ' ' + currencySymbols[userCurrency];
                                         }
+                                        
+                                        const currencies = dayData.balance_by_currency;
+                                        const currencyKeys = Object.keys(currencies);
+                                        
+                                        if (currencyKeys.length === 1) {
+                                            const curr = currencyKeys[0];
+                                            const amount = currencies[curr];
+                                            const symbol = currencySymbols[curr] || curr;
+                                            const sign = amount >= 0 ? '+' : '';
+                                            if (curr === userCurrency) {
+                                                return label + ': ' + sign + amount.toFixed(2) + ' ' + symbol;
+                                            } else {
+                                                const converted = convertCurrency(amount, curr, userCurrency);
+                                                const convertedSign = converted >= 0 ? '+' : '';
+                                                return label + ': ' + sign + amount.toFixed(2) + ' ' + symbol + ' (≈ ' + convertedSign + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ')';
+                                            }
+                                        }
+                                        
+                                        // Multiple currencies
+                                        const lines = [label + ':'];
+                                        let totalConverted = 0;
+                                        currencyKeys.forEach(curr => {
+                                            const amount = currencies[curr];
+                                            const symbol = currencySymbols[curr] || curr;
+                                            const sign = amount >= 0 ? '+' : '';
+                                            if (curr !== userCurrency) {
+                                                const converted = convertCurrency(amount, curr, userCurrency);
+                                                totalConverted += converted;
+                                                const convertedSign = converted >= 0 ? '+' : '';
+                                                lines.push('  ' + sign + amount.toFixed(2) + ' ' + symbol + ' (≈ ' + convertedSign + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ')');
+                                            } else {
+                                                totalConverted += amount;
+                                                lines.push('  ' + sign + amount.toFixed(2) + ' ' + symbol);
+                                            }
+                                        });
+                                        const totalSign = totalConverted >= 0 ? '+' : '';
+                                        lines.push('Всього: ≈ ' + totalSign + totalConverted.toFixed(2) + ' ' + currencySymbols[userCurrency]);
+                                        return lines;
                                     }
-                                    return label;
+                                    
+                                    // Для доходів
+                                    if (label.includes('{{ income_title }}')) {
+                                        if (!dayData.income_by_currency || Object.keys(dayData.income_by_currency).length === 0) {
+                                            return label + ': ' + context.parsed.y.toFixed(2) + ' ' + currencySymbols[userCurrency];
+                                        }
+                                        
+                                        const currencies = dayData.income_by_currency;
+                                        const currencyKeys = Object.keys(currencies);
+                                        
+                                        if (currencyKeys.length === 1) {
+                                            const curr = currencyKeys[0];
+                                            const amount = currencies[curr];
+                                            const symbol = currencySymbols[curr] || curr;
+                                            if (curr === userCurrency) {
+                                                return label + ': ' + amount.toFixed(2) + ' ' + symbol;
+                                            } else {
+                                                const converted = convertCurrency(amount, curr, userCurrency);
+                                                return label + ': ' + amount.toFixed(2) + ' ' + symbol + ' (≈ ' + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ')';
+                                            }
+                                        }
+                                        
+                                        // Multiple currencies
+                                        const lines = [label + ':'];
+                                        let totalConverted = 0;
+                                        currencyKeys.forEach(curr => {
+                                            const amount = currencies[curr];
+                                            const symbol = currencySymbols[curr] || curr;
+                                            if (curr !== userCurrency) {
+                                                const converted = convertCurrency(amount, curr, userCurrency);
+                                                totalConverted += converted;
+                                                lines.push('  ' + amount.toFixed(2) + ' ' + symbol + ' (≈ ' + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ')');
+                                            } else {
+                                                totalConverted += amount;
+                                                lines.push('  ' + amount.toFixed(2) + ' ' + symbol);
+                                            }
+                                        });
+                                        lines.push('Всього: ≈ ' + totalConverted.toFixed(2) + ' ' + currencySymbols[userCurrency]);
+                                        return lines;
+                                    }
+                                    
+                                    // Для витрат
+                                    if (label.includes('{{ expense_title }}')) {
+                                        if (!dayData.expense_by_currency || Object.keys(dayData.expense_by_currency).length === 0) {
+                                            return label + ': ' + context.parsed.y.toFixed(2) + ' ' + currencySymbols[userCurrency];
+                                        }
+                                        
+                                        const currencies = dayData.expense_by_currency;
+                                        const currencyKeys = Object.keys(currencies);
+                                        
+                                        if (currencyKeys.length === 1) {
+                                            const curr = currencyKeys[0];
+                                            const amount = currencies[curr];
+                                            const symbol = currencySymbols[curr] || curr;
+                                            if (curr === userCurrency) {
+                                                return label + ': ' + amount.toFixed(2) + ' ' + symbol;
+                                            } else {
+                                                const converted = convertCurrency(amount, curr, userCurrency);
+                                                return label + ': ' + amount.toFixed(2) + ' ' + symbol + ' (≈ ' + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ')';
+                                            }
+                                        }
+                                        
+                                        // Multiple currencies
+                                        const lines = [label + ':'];
+                                        let totalConverted = 0;
+                                        currencyKeys.forEach(curr => {
+                                            const amount = currencies[curr];
+                                            const symbol = currencySymbols[curr] || curr;
+                                            if (curr !== userCurrency) {
+                                                const converted = convertCurrency(amount, curr, userCurrency);
+                                                totalConverted += converted;
+                                                lines.push('  ' + amount.toFixed(2) + ' ' + symbol + ' (≈ ' + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ')');
+                                            } else {
+                                                totalConverted += amount;
+                                                lines.push('  ' + amount.toFixed(2) + ' ' + symbol);
+                                            }
+                                        });
+                                        lines.push('Всього: ≈ ' + totalConverted.toFixed(2) + ' ' + currencySymbols[userCurrency]);
+                                        return lines;
+                                    }
+                                    
+                                    return label + ': ' + context.parsed.y.toFixed(2) + ' ' + currencySymbols[userCurrency];
                                 }
                             }
                         }
@@ -1258,7 +1520,8 @@
                             },
                             ticks: {
                                 callback: function(value) {
-                                    return value.toLocaleString() + ' UAH';
+                                    const userCurrency = reportData.user_currency || 'UAH';
+                                    return value.toLocaleString() + ' ' + currencySymbols[userCurrency];
                                 }
                             }
                         },
@@ -1275,7 +1538,8 @@
                             },
                             ticks: {
                                 callback: function(value) {
-                                    return (value >= 0 ? '+' : '') + value.toLocaleString() + ' UAH';
+                                    const userCurrency = reportData.user_currency || 'UAH';
+                                    return (value >= 0 ? '+' : '') + value.toLocaleString() + ' ' + currencySymbols[userCurrency];
                                 }
                             }
                         }
@@ -1345,9 +1609,46 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
+                                const userCurrency = reportData.user_currency || 'UAH';
+                                const dataType = context.dataIndex === 0 ? 'income' : 'expense';
+                                const byCurrency = dataType === 'income' ? reportData.income_by_currency : reportData.expense_by_currency;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((context.parsed / total) * 100).toFixed(1);
-                                return context.label + ': ' + context.parsed.toFixed(2) + ' UAH (' + percentage + '%)';
+                                
+                                if (!byCurrency || Object.keys(byCurrency).length === 0) {
+                                    return context.label + ': ' + context.parsed.toFixed(2) + ' ' + currencySymbols[userCurrency] + ' (' + percentage + '%)';
+                                }
+                                
+                                const currencyKeys = Object.keys(byCurrency);
+                                if (currencyKeys.length === 1) {
+                                    const curr = currencyKeys[0];
+                                    const amount = byCurrency[curr];
+                                    const symbol = currencySymbols[curr] || curr;
+                                    if (curr === userCurrency) {
+                                        return context.label + ': ' + amount.toFixed(2) + ' ' + symbol + ' (' + percentage + '%)';
+                                    } else {
+                                        const converted = convertCurrency(amount, curr, userCurrency);
+                                        return context.label + ': ' + amount.toFixed(2) + ' ' + symbol + ' (≈ ' + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ') (' + percentage + '%)';
+                                    }
+                                }
+                                
+                                // Multiple currencies
+                                const lines = [context.label + ':'];
+                                let totalConverted = 0;
+                                currencyKeys.forEach(curr => {
+                                    const amount = byCurrency[curr];
+                                    const symbol = currencySymbols[curr] || curr;
+                                    if (curr !== userCurrency) {
+                                        const converted = convertCurrency(amount, curr, userCurrency);
+                                        totalConverted += converted;
+                                        lines.push('  ' + amount.toFixed(2) + ' ' + symbol + ' (≈ ' + converted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ')');
+                                    } else {
+                                        totalConverted += amount;
+                                        lines.push('  ' + amount.toFixed(2) + ' ' + symbol);
+                                    }
+                                });
+                                lines.push('Всього: ≈ ' + totalConverted.toFixed(2) + ' ' + currencySymbols[userCurrency] + ' (' + percentage + '%)');
+                                return lines;
                             }
                         }
                     }
@@ -1448,17 +1749,39 @@
                             callbacks: {
                                 label: function(context) {
                                     const percent = incomePercents[context.dataIndex];
-                                    let label = context.label + ': ' + context.parsed.toFixed(2) + ' UAH (' + percent + '%)';
+                                    const categoryKey = data[context.dataIndex].key;
+                                    const userCurrency = reportData.user_currency || 'UAH';
                                     
-                                    // Якщо це детальний вигляд, додаємо описи
-                                    if (isDetailed && data[context.dataIndex].items && data[context.dataIndex].items.length > 0) {
-                                        const items = data[context.dataIndex].items;
-                                        return [label, '─'.repeat(30), ...items.slice(0, 5).map(item => 
-                                            `📝 ${item.description} - ${item.amount.toFixed(2)} UAH`
-                                        ), items.length > 5 ? `... та ще ${items.length - 5}` : ''];
+                                    // У спрощеному режимі показуємо тільки конвертовану суму
+                                    if (!isDetailed) {
+                                        const amount = context.parsed;
+                                        return context.label + ': ≈ ' + amount.toFixed(2) + ' ' + currencySymbols[userCurrency] + ' (' + percent + '%)';
                                     }
                                     
-                                    return label;
+                                    // У детальному режимі показуємо розбивку по валютах
+                                    const amountText = formatCurrencyTooltip(categoryKey, context.parsed, userCurrency);
+                                    
+                                    // Базова інформація
+                                    const baseInfo = Array.isArray(amountText) 
+                                        ? [context.label + ':', ...amountText, `Відсоток: ${percent}%`]
+                                        : [context.label + ': ' + amountText + ' (' + percent + '%)'];
+                                    
+                                    // Якщо це детальний вигляд, додаємо описи
+                                    if (data[context.dataIndex].items && data[context.dataIndex].items.length > 0) {
+                                        const items = data[context.dataIndex].items;
+                                        return [...baseInfo, '─'.repeat(30), ...items.slice(0, 5).map(item => {
+                                            const itemCurrency = item.currency || 'UAH';
+                                            const itemSymbol = currencySymbols[itemCurrency] || itemCurrency;
+                                            if (itemCurrency === userCurrency) {
+                                                return `📝 ${item.description} - ${item.amount.toFixed(2)} ${itemSymbol}`;
+                                            } else {
+                                                const converted = convertCurrency(item.amount, itemCurrency, userCurrency);
+                                                return `📝 ${item.description} - ${item.amount.toFixed(2)} ${itemSymbol} (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})`;
+                                            }
+                                        }), items.length > 5 ? `... та ще ${items.length - 5}` : ''];
+                                    }
+                                    
+                                    return baseInfo;
                                 }
                             }
                         }
@@ -1556,17 +1879,39 @@
                             callbacks: {
                                 label: function(context) {
                                     const percent = expensePercents[context.dataIndex];
-                                    let label = context.label + ': ' + context.parsed.toFixed(2) + ' UAH (' + percent + '%)';
+                                    const categoryKey = data[context.dataIndex].key;
+                                    const userCurrency = reportData.user_currency || 'UAH';
                                     
-                                    // Якщо це детальний вигляд, додаємо описи
-                                    if (isDetailed && data[context.dataIndex].items && data[context.dataIndex].items.length > 0) {
-                                        const items = data[context.dataIndex].items;
-                                        return [label, '─'.repeat(30), ...items.slice(0, 5).map(item => 
-                                            `📝 ${item.description} - ${item.amount.toFixed(2)} UAH`
-                                        ), items.length > 5 ? `... та ще ${items.length - 5}` : ''];
+                                    // У спрощеному режимі показуємо тільки конвертовану суму
+                                    if (!isDetailed) {
+                                        const amount = context.parsed;
+                                        return context.label + ': ≈ ' + amount.toFixed(2) + ' ' + currencySymbols[userCurrency] + ' (' + percent + '%)';
                                     }
                                     
-                                    return label;
+                                    // У детальному режимі показуємо розбивку по валютах
+                                    const amountText = formatCurrencyTooltip(categoryKey, context.parsed, userCurrency);
+                                    
+                                    // Базова інформація
+                                    const baseInfo = Array.isArray(amountText) 
+                                        ? [context.label + ':', ...amountText, `Відсоток: ${percent}%`]
+                                        : [context.label + ': ' + amountText + ' (' + percent + '%)'];
+                                    
+                                    // Якщо це детальний вигляд, додаємо описи
+                                    if (data[context.dataIndex].items && data[context.dataIndex].items.length > 0) {
+                                        const items = data[context.dataIndex].items;
+                                        return [...baseInfo, '─'.repeat(30), ...items.slice(0, 5).map(item => {
+                                            const itemCurrency = item.currency || 'UAH';
+                                            const itemSymbol = currencySymbols[itemCurrency] || itemCurrency;
+                                            if (itemCurrency === userCurrency) {
+                                                return `📝 ${item.description} - ${item.amount.toFixed(2)} ${itemSymbol}`;
+                                            } else {
+                                                const converted = convertCurrency(item.amount, itemCurrency, userCurrency);
+                                                return `📝 ${item.description} - ${item.amount.toFixed(2)} ${itemSymbol} (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})`;
+                                            }
+                                        }), items.length > 5 ? `... та ще ${items.length - 5}` : ''];
+                                    }
+                                    
+                                    return baseInfo;
                                 }
                             }
                         }
@@ -1620,18 +1965,82 @@
                 return;
             }
             
+            const categoryByCurrency = reportData.income_by_category_currency || {};
+            const userCurrency = reportData.user_currency || 'UAH';
+            
             let html = '';
             data.forEach((item, index) => {
                 const hasItems = isDetailed && item.items && item.items.length > 0;
+                const currencies = categoryByCurrency[item.key] || {};
+                const currencyKeys = Object.keys(currencies);
+                
                 html += `
-                    <div class="category-item">
+                    <div class="category-item" id="income-item-${index}">
                         <div class="category-item-header" ${hasItems ? `onclick="toggleCategoryDetails('income-${index}')"` : ''}>
                             <span class="category-name">${item.name}${hasItems ? ` <span class="toggle-icon" id="toggle-income-${index}">▶</span>` : ''}</span>
-                            <div class="category-amount">
-                                <span class="category-value">${item.amount} UAH</span>
+                            <div class="category-amount">`;
+                
+                // В спрощеному режимі показуємо тільки загальну конвертовану суму
+                if (!isDetailed) {
+                    html += `<span class="category-value">≈ ${item.amount} ${currencySymbols[userCurrency]}</span>
                                 <span class="category-percent">${item.percent}%</span>
                             </div>
                         </div>`;
+                }
+                // В детальному режимі показуємо розбивку по валютах
+                else if (currencyKeys.length > 1) {
+                    // Спрощений вигляд (для disabled стану)
+                    html += `<span class="category-value category-simple-value" style="display: none;">≈ ${item.amount} ${currencySymbols[userCurrency]}</span>
+                                <span class="category-percent">${item.percent}%</span>
+                        </div>
+                    </div>
+                    <div class="category-currency-breakdown" style="margin-top: 0.5rem; padding-left: 1rem;">`;
+                    
+                    let totalConverted = 0;
+                    currencyKeys.forEach(curr => {
+                        const amount = currencies[curr];
+                        const symbol = currencySymbols[curr] || curr;
+                        
+                        // Конвертуємо якщо не дефолтна валюта
+                        if (curr !== userCurrency) {
+                            const converted = convertCurrency(amount, curr, userCurrency);
+                            totalConverted += converted;
+                            html += `<div style="margin-bottom: 0.25rem; color: var(--text-secondary);">◦ ${amount.toFixed(2)} ${symbol} (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})</div>`;
+                        } else {
+                            totalConverted += amount;
+                            html += `<div style="margin-bottom: 0.25rem; color: var(--text-secondary);">◦ ${amount.toFixed(2)} ${symbol}</div>`;
+                        }
+                    });
+                    
+                    html += `<div style="margin-top: 0.25rem; font-weight: 500;">Всього: ≈ ${totalConverted.toFixed(2)} ${currencySymbols[userCurrency]}</div>
+                    </div>`;
+                } else if (currencyKeys.length === 1) {
+                    // Одна валюта - показуємо оригінальну
+                    const curr = currencyKeys[0];
+                    const amount = currencies[curr];
+                    const symbol = currencySymbols[curr] || curr;
+                    
+                    if (curr === userCurrency) {
+                        // Дефолтна валюта - просто сума
+                        html += `<span class="category-value">${amount.toFixed(2)} ${symbol}</span>
+                                    <span class="category-percent">${item.percent}%</span>
+                                </div>
+                            </div>`;
+                    } else {
+                        // Не дефолтна - показуємо з конвертацією
+                        const converted = convertCurrency(amount, curr, userCurrency);
+                        html += `<span class="category-value">${amount.toFixed(2)} ${symbol} (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})</span>
+                                    <span class="category-percent">${item.percent}%</span>
+                                </div>
+                            </div>`;
+                    }
+                } else {
+                    // Немає даних по валютах - показуємо загальну суму
+                    html += `<span class="category-value">${item.amount} {{ currency_symbol }}</span>
+                                <span class="category-percent">${item.percent}%</span>
+                            </div>
+                        </div>`;
+                }
                 
                 // Якщо детальний вигляд і є описи
                 if (hasItems) {
@@ -1646,6 +2055,17 @@
                             minute: '2-digit'
                         }) : '';
                         
+                        // Форматуємо суму з валютою
+                        const descCurrency = desc.currency || 'UAH';
+                        const descSymbol = currencySymbols[descCurrency] || descCurrency;
+                        let amountStr = `${desc.amount.toFixed(2)} ${descSymbol}`;
+                        
+                        // Якщо валюта не дефолтна - додаємо конвертацію
+                        if (descCurrency !== userCurrency) {
+                            const converted = convertCurrency(desc.amount, descCurrency, userCurrency);
+                            amountStr += ` (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})`;
+                        }
+                        
                         html += `
                             <div class="description-item">
                                 <div class="description-text">
@@ -1655,7 +2075,7 @@
                                     </div>
                                     ${timeStr ? `<div class="description-time">${timeStr}</div>` : ''}
                                 </div>
-                                <span class="description-amount">${desc.amount.toFixed(2)} UAH</span>
+                                <span class="description-amount">${amountStr}</span>
                             </div>
                         `;
                     });
@@ -1676,18 +2096,82 @@
                 return;
             }
             
+            const categoryByCurrency = reportData.expense_by_category_currency || {};
+            const userCurrency = reportData.user_currency || 'UAH';
+            
             let html = '';
             data.forEach((item, index) => {
                 const hasItems = isDetailed && item.items && item.items.length > 0;
+                const currencies = categoryByCurrency[item.key] || {};
+                const currencyKeys = Object.keys(currencies);
+                
                 html += `
-                    <div class="category-item">
+                    <div class="category-item" id="expense-item-${index}">
                         <div class="category-item-header" ${hasItems ? `onclick="toggleCategoryDetails('expense-${index}')"` : ''}>
                             <span class="category-name">${item.name}${hasItems ? ` <span class="toggle-icon" id="toggle-expense-${index}">▶</span>` : ''}</span>
-                            <div class="category-amount">
-                                <span class="category-value">${item.amount} UAH</span>
+                            <div class="category-amount">`;
+                
+                // В спрощеному режимі показуємо тільки загальну конвертовану суму
+                if (!isDetailed) {
+                    html += `<span class="category-value">≈ ${item.amount} ${currencySymbols[userCurrency]}</span>
                                 <span class="category-percent">${item.percent}%</span>
                             </div>
                         </div>`;
+                }
+                // В детальному режимі показуємо розбивку по валютах
+                else if (currencyKeys.length > 1) {
+                    // Спрощений вигляд (для disabled стану)
+                    html += `<span class="category-value category-simple-value" style="display: none;">≈ ${item.amount} ${currencySymbols[userCurrency]}</span>
+                                <span class="category-percent">${item.percent}%</span>
+                        </div>
+                    </div>
+                    <div class="category-currency-breakdown" style="margin-top: 0.5rem; padding-left: 1rem;">`;
+                    
+                    let totalConverted = 0;
+                    currencyKeys.forEach(curr => {
+                        const amount = currencies[curr];
+                        const symbol = currencySymbols[curr] || curr;
+                        
+                        // Конвертуємо якщо не дефолтна валюта
+                        if (curr !== userCurrency) {
+                            const converted = convertCurrency(amount, curr, userCurrency);
+                            totalConverted += converted;
+                            html += `<div style="margin-bottom: 0.25rem; color: var(--text-secondary);">◦ ${amount.toFixed(2)} ${symbol} (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})</div>`;
+                        } else {
+                            totalConverted += amount;
+                            html += `<div style="margin-bottom: 0.25rem; color: var(--text-secondary);">◦ ${amount.toFixed(2)} ${symbol}</div>`;
+                        }
+                    });
+                    
+                    html += `<div style="margin-top: 0.25rem; font-weight: 500;">Всього: ≈ ${totalConverted.toFixed(2)} ${currencySymbols[userCurrency]} (${item.percent}%)</div>
+                    </div>`;
+                } else if (currencyKeys.length === 1) {
+                    // Одна валюта - показуємо оригінальну
+                    const curr = currencyKeys[0];
+                    const amount = currencies[curr];
+                    const symbol = currencySymbols[curr] || curr;
+                    
+                    if (curr === userCurrency) {
+                        // Дефолтна валюта - просто сума
+                        html += `<span class="category-value">${amount.toFixed(2)} ${symbol}</span>
+                                    <span class="category-percent">${item.percent}%</span>
+                                </div>
+                            </div>`;
+                    } else {
+                        // Не дефолтна - показуємо з конвертацією
+                        const converted = convertCurrency(amount, curr, userCurrency);
+                        html += `<span class="category-value">${amount.toFixed(2)} ${symbol} (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})</span>
+                                    <span class="category-percent">${item.percent}%</span>
+                                </div>
+                            </div>`;
+                    }
+                } else {
+                    // Немає даних по валютах - показуємо загальну суму
+                    html += `<span class="category-value">${item.amount} {{ currency_symbol }}</span>
+                                <span class="category-percent">${item.percent}%</span>
+                            </div>
+                        </div>`;
+                }
                 
                 // Якщо детальний вигляд і є описи
                 if (hasItems) {
@@ -1702,6 +2186,17 @@
                             minute: '2-digit'
                         }) : '';
                         
+                        // Форматуємо суму з валютою
+                        const descCurrency = desc.currency || 'UAH';
+                        const descSymbol = currencySymbols[descCurrency] || descCurrency;
+                        let amountStr = `${desc.amount.toFixed(2)} ${descSymbol}`;
+                        
+                        // Якщо валюта не дефолтна - додаємо конвертацію
+                        if (descCurrency !== userCurrency) {
+                            const converted = convertCurrency(desc.amount, descCurrency, userCurrency);
+                            amountStr += ` (≈ ${converted.toFixed(2)} ${currencySymbols[userCurrency]})`;
+                        }
+                        
                         html += `
                             <div class="description-item">
                                 <div class="description-text">
@@ -1711,7 +2206,7 @@
                                     </div>
                                     ${timeStr ? `<div class="description-time">${timeStr}</div>` : ''}
                                 </div>
-                                <span class="description-amount">${desc.amount.toFixed(2)} UAH</span>
+                                <span class="description-amount">${amountStr}</span>
                             </div>
                         `;
                     });
@@ -1736,11 +2231,19 @@
         
         // Функція для перемикання стану категорії (при кліку на легенду)
         function toggleCategoryState(type, index, isHidden) {
-            const categoryItems = document.querySelectorAll(`#${type}List .category-item`);
+            const categoryItem = document.getElementById(`${type}-item-${index}`);
             
-            if (categoryItems[index]) {
+            if (categoryItem) {
                 if (isHidden) {
-                    categoryItems[index].classList.add('disabled');
+                    categoryItem.classList.add('disabled');
+                    
+                    // Перемикаємо на спрощений вигляд (приховуємо розбивку, показуємо спрощену суму)
+                    const breakdown = categoryItem.querySelector('.category-currency-breakdown');
+                    const simpleValue = categoryItem.querySelector('.category-simple-value');
+                    
+                    if (breakdown) breakdown.style.display = 'none';
+                    if (simpleValue) simpleValue.style.display = 'inline';
+                    
                     // Згортаємо опис якщо він був розгорнутий
                     const detailsElement = document.getElementById(`details-${type}-${index}`);
                     const toggleIcon = document.getElementById(`toggle-${type}-${index}`);
@@ -1749,14 +2252,28 @@
                         if (toggleIcon) toggleIcon.classList.remove('expanded');
                     }
                 } else {
-                    categoryItems[index].classList.remove('disabled');
+                    categoryItem.classList.remove('disabled');
+                    
+                    // Перемикаємо на детальний вигляд (показуємо розбивку, приховуємо спрощену суму)
+                    const breakdown = categoryItem.querySelector('.category-currency-breakdown');
+                    const simpleValue = categoryItem.querySelector('.category-simple-value');
+                    
+                    if (breakdown) breakdown.style.display = 'block';
+                    if (simpleValue) simpleValue.style.display = 'none';
                 }
             }
         }
         
-        // Ініціалізація графіків зі спрощеним виглядом
-        createIncomeChart(false);
-        createExpenseChart(false);
+        // Ініціалізація графіків зі спрощеним виглядом та списків після завантаження курсів
+        async function initializeCharts() {
+            await fetchExchangeRates();
+            createIncomeChart(false);
+            createExpenseChart(false);
+            updateIncomeList(false);
+            updateExpenseList(false);
+        }
+        
+        initializeCharts();
 
         // Графік статистики
         const statsCtx = document.getElementById('statsChart').getContext('2d');

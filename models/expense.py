@@ -61,6 +61,7 @@ class Expense:
             amount=data['amount'],
             category_id=data['category_id'],
             description=data.get('description'),
+            currency=data.get('currency', 'UAH'),
             add_date=data.get('add_date'),
             update_date=data.get('update_date')
         )

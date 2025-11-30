@@ -6,13 +6,18 @@ Handler для налаштувань користувача.
 
 from utils import send_main_menu, answer_callback
 from locales import get_text, set_language
-from database import ensure_user_exists, update_user_language
-from keyboards import create_settings_keyboard, create_language_keyboard
+from database import ensure_user_exists, update_user_language, update_user_currency
+from keyboards import create_settings_keyboard, create_language_keyboard, create_currency_keyboard
+from utils.currency_converter import get_rate_info
 from config.callbacks import (
     CALLBACK_SETTINGS,
     CALLBACK_SETTINGS_LANGUAGE,
+    CALLBACK_SETTINGS_CURRENCY,
     CALLBACK_LANGUAGE_UK,
     CALLBACK_LANGUAGE_EN,
+    CALLBACK_CURRENCY_UAH,
+    CALLBACK_CURRENCY_USD,
+    CALLBACK_CURRENCY_EUR,
     CALLBACK_BACK_TO_MAIN,
     CALLBACK_BACK_TO_SETTINGS,
 )
@@ -72,6 +77,52 @@ def register_handlers(bot):
         set_language(user_id, selected_lang)
         
         success_msg = get_text('settings_language_changed', user_id=user_id)
+        send_main_menu(
+            bot,
+            call.message.chat.id,
+            success_msg,
+            call.message.message_id,
+            user_id=user_id
+        )
+    
+    @bot.callback_query_handler(func=lambda call: call.data == CALLBACK_SETTINGS_CURRENCY)
+    def change_currency_menu(call):
+        """Меню вибору валюти."""
+        answer_callback(bot, call)
+        
+        user_id = call.from_user.id
+        ensure_user_exists(user_id, call.from_user.username)
+        
+        # Отримуємо актуальні курси валют
+        rate_info = get_rate_info(user_id=user_id)
+        
+        keyboard = create_currency_keyboard(user_id=user_id, back_callback=CALLBACK_BACK_TO_SETTINGS)
+        bot.edit_message_text(
+            get_text('settings_select_currency', user_id=user_id).format(rate_info),
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=keyboard
+        )
+    
+    @bot.callback_query_handler(func=lambda call: call.data in [CALLBACK_CURRENCY_UAH, CALLBACK_CURRENCY_USD, CALLBACK_CURRENCY_EUR])
+    def process_currency_selection(call):
+        """Обробка вибору валюти."""
+        answer_callback(bot, call)
+        
+        user_id = call.from_user.id
+        
+        if call.data == CALLBACK_CURRENCY_UAH:
+            selected_currency = 'UAH'
+        elif call.data == CALLBACK_CURRENCY_USD:
+            selected_currency = 'USD'
+        elif call.data == CALLBACK_CURRENCY_EUR:
+            selected_currency = 'EUR'
+        else:
+            return
+        
+        update_user_currency(user_id, selected_currency)
+        
+        success_msg = get_text('settings_currency_changed', user_id=user_id).format(selected_currency)
         send_main_menu(
             bot,
             call.message.chat.id,

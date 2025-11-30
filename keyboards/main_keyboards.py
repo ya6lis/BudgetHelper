@@ -31,11 +31,17 @@ from config.callbacks import (
     INCOME_TYPE_CALLBACKS,
     EXPENSE_TYPE_CALLBACKS,
     CALLBACK_SETTINGS_LANGUAGE,
+    CALLBACK_SETTINGS_CURRENCY,
     CALLBACK_LANGUAGE_UK,
     CALLBACK_LANGUAGE_EN,
+    CALLBACK_CURRENCY_UAH,
+    CALLBACK_CURRENCY_USD,
+    CALLBACK_CURRENCY_EUR,
     CALLBACK_REPORT_DETAILED,
     CALLBACK_REPORT_QUICK,
     CALLBACK_BACK_TO_REPORT_MENU,
+    CALLBACK_EXPENSE_CURRENCY_PREFIX,
+    CALLBACK_INCOME_CURRENCY_PREFIX,
 )
 
 
@@ -340,10 +346,105 @@ def create_settings_keyboard(user_id=None, back_callback=CALLBACK_BACK_TO_MAIN):
             callback_data=CALLBACK_SETTINGS_LANGUAGE
         ),
         types.InlineKeyboardButton(
+            get_text('settings_change_currency', user_id=user_id),
+            callback_data=CALLBACK_SETTINGS_CURRENCY
+        )
+    )
+    markup.add(
+        types.InlineKeyboardButton(
             get_text('settings_manage_categories', user_id=user_id),
             callback_data='category_management'
         )
     )
+    if back_callback != CALLBACK_BACK_TO_MAIN:
+        markup.row(
+            types.InlineKeyboardButton(
+                get_text('menu_main', user_id=user_id),
+                callback_data=CALLBACK_BACK_TO_MAIN
+            ),
+            types.InlineKeyboardButton(
+                get_text('menu_back', user_id=user_id),
+                callback_data=back_callback
+            )
+        )
+    else:
+        markup.add(
+            types.InlineKeyboardButton(
+                get_text('menu_back', user_id=user_id),
+                callback_data=back_callback
+            )
+        )
+    return markup
+
+
+def create_currency_keyboard(user_id=None, back_callback=CALLBACK_BACK_TO_SETTINGS):
+    """Клавіатура вибору валюти за замовчуванням."""
+    from config.constants import AVAILABLE_CURRENCIES
+    from utils.currency_converter import get_currency_symbol
+    
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    
+    buttons = []
+    for currency in AVAILABLE_CURRENCIES:
+        symbol = get_currency_symbol(currency)
+        buttons.append(
+            types.InlineKeyboardButton(
+                f"{symbol} {currency}",
+                callback_data=f"curr_{currency.lower()}"
+            )
+        )
+    
+    markup.add(*buttons)
+    
+    if back_callback != CALLBACK_BACK_TO_MAIN:
+        markup.row(
+            types.InlineKeyboardButton(
+                get_text('menu_main', user_id=user_id),
+                callback_data=CALLBACK_BACK_TO_MAIN
+            ),
+            types.InlineKeyboardButton(
+                get_text('menu_back', user_id=user_id),
+                callback_data=back_callback
+            )
+        )
+    else:
+        markup.add(
+            types.InlineKeyboardButton(
+                get_text('menu_back', user_id=user_id),
+                callback_data=back_callback
+            )
+        )
+    return markup
+
+
+def create_transaction_currency_keyboard(user_id=None, transaction_type='expense', back_callback=CALLBACK_BACK_TO_ADD_EXPENSE):
+    """Клавіатура вибору валюти для транзакції (витрата або дохід)."""
+    from config.constants import AVAILABLE_CURRENCIES
+    from utils.currency_converter import get_currency_symbol
+    from database import get_user
+    
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    
+    # Отримуємо дефолтну валюту користувача
+    user = get_user(user_id)
+    user_currency = user.default_currency if user else 'UAH'
+    
+    buttons = []
+    for currency in AVAILABLE_CURRENCIES:
+        symbol = get_currency_symbol(currency)
+        # Позначаємо дефолтну валюту
+        label = f"✓ {symbol} {currency}" if currency == user_currency else f"{symbol} {currency}"
+        
+        prefix = CALLBACK_EXPENSE_CURRENCY_PREFIX if transaction_type == 'expense' else CALLBACK_INCOME_CURRENCY_PREFIX
+        buttons.append(
+            types.InlineKeyboardButton(
+                label,
+                callback_data=f"{prefix}{currency.lower()}"
+            )
+        )
+    
+    markup.add(*buttons)
+    
     if back_callback != CALLBACK_BACK_TO_MAIN:
         markup.row(
             types.InlineKeyboardButton(

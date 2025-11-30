@@ -42,8 +42,18 @@ CALLBACK_EXPENSE_OTHER = 'expense_type_other'
 
 # Налаштування
 CALLBACK_SETTINGS_LANGUAGE = 'settings_language'
+CALLBACK_SETTINGS_CURRENCY = 'settings_currency'
 CALLBACK_LANGUAGE_UK = 'lang_uk'
 CALLBACK_LANGUAGE_EN = 'lang_en'
+CALLBACK_CURRENCY_UAH = 'curr_uah'
+CALLBACK_CURRENCY_USD = 'curr_usd'
+CALLBACK_CURRENCY_EUR = 'curr_eur'
+
+# Валюта для транзакцій
+CALLBACK_SELECT_EXPENSE_CURRENCY = 'select_expense_currency'
+CALLBACK_SELECT_INCOME_CURRENCY = 'select_income_currency'
+CALLBACK_EXPENSE_CURRENCY_PREFIX = 'expense_curr_'
+CALLBACK_INCOME_CURRENCY_PREFIX = 'income_curr_'
 
 # Звіти
 CALLBACK_REPORT_DETAILED = 'report_detailed'

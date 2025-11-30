@@ -11,6 +11,7 @@ from jinja2 import Environment, FileSystemLoader
 from typing import Dict, List, Optional
 from models import ReportData
 from locales import get_text, translate_category_name
+from utils.currency_converter import get_currency_symbol
 
 
 class HTMLReportGenerator:
@@ -80,6 +81,7 @@ class HTMLReportGenerator:
             dict: Дані для шаблону
         """
         # Базова інформація
+        currency_symbol = get_currency_symbol(report.currency)
         data = {
             'lang': lang,
             'title': get_text('report_title', user_id=user_id).format(report.period_name),
@@ -87,6 +89,8 @@ class HTMLReportGenerator:
             'start_date': report.start_date,
             'end_date': report.end_date,
             'generation_date': datetime.now().strftime('%d.%m.%Y %H:%M'),
+            'currency': report.currency,
+            'currency_symbol': currency_symbol,
         }
         
         # Метрики
@@ -127,13 +131,15 @@ class HTMLReportGenerator:
         data['income_data_detailed'] = self._prepare_detailed_category_data(
             report.incomes,
             report.total_income,
-            user_id
+            user_id,
+            report.currency
         )
         
         data['expense_data_detailed'] = self._prepare_detailed_category_data(
             report.expenses,
             report.total_expense,
-            user_id
+            user_id,
+            report.currency
         )
         
         # Транзакції
@@ -159,6 +165,11 @@ class HTMLReportGenerator:
             'expense_data': expense_data_list,
             'income_data_detailed': income_data_detailed_list,
             'expense_data_detailed': expense_data_detailed_list,
+            'income_by_currency': report.income_by_currency or {},
+            'expense_by_currency': report.expense_by_currency or {},
+            'income_by_category_currency': report.income_by_category_currency or {},
+            'expense_by_category_currency': report.expense_by_category_currency or {},
+            'user_currency': report.currency,
             'start_date': report.start_date,
             'end_date': report.end_date,
             'daily_dynamics': daily_dynamics,
@@ -204,7 +215,20 @@ class HTMLReportGenerator:
             'simple_view_btn': get_text('simple_view_btn', user_id=user_id),
             'detailed_view_btn': get_text('detailed_view_btn', user_id=user_id),
             'dynamics_title': get_text('dynamics_title', user_id=user_id),
+            'total_text': get_text('total_text', user_id=user_id),
         }
+    
+    def _get_currency_symbol(self, currency_code: str) -> str:
+        """
+        Отримує символ валюти за її кодом.
+        
+        Args:
+            currency_code: Код валюти (UAH, USD, EUR)
+            
+        Returns:
+            str: Символ валюти
+        """
+        return get_currency_symbol(currency_code)
     
     def _prepare_category_data(
         self,
@@ -257,7 +281,8 @@ class HTMLReportGenerator:
         self,
         transactions: List,
         total: float,
-        user_id: int
+        user_id: int,
+        report_currency: str = 'UAH'
     ) -> Dict[str, Dict]:
         """
         Підготовка детальних даних категорій (з описами транзакцій).
@@ -266,12 +291,14 @@ class HTMLReportGenerator:
             transactions: Список транзакцій (Income або Expense)
             total: Загальна сума
             user_id: ID користувача
+            report_currency: Валюта звіту для конвертації
         
         Returns:
             dict: Детальні дані з описами транзакцій, відсортовані по процентах
         """
         from database import CategoryRepository
         from collections import defaultdict
+        from utils.currency_converter import convert_currency
         
         # Групуємо транзакції по категоріях
         grouped = defaultdict(lambda: {'amount': 0.0, 'items': []})
@@ -284,14 +311,23 @@ class HTMLReportGenerator:
             # Перекладаємо назву категорії
             translated_category_name = translate_category_name(category_name, user_id=user_id)
             
-            # Додаємо суму
-            grouped[translated_category_name]['amount'] += transaction.amount
+            # Конвертуємо суму у валюту звіту
+            transaction_currency = getattr(transaction, 'currency', 'UAH')
+            converted_amount = convert_currency(
+                transaction.amount,
+                transaction_currency,
+                report_currency
+            )
+            
+            # Додаємо суму (конвертовану)
+            grouped[translated_category_name]['amount'] += converted_amount
             
             # Додаємо опис транзакції (якщо є)
             if transaction.description:
                 grouped[translated_category_name]['items'].append({
                     'description': transaction.description,
-                    'amount': transaction.amount,
+                    'amount': transaction.amount,  # Оригінальна сума
+                    'currency': transaction_currency,  # Оригінальна валюта
                     'add_date': transaction.add_date  # Повна дата з часом
                 })
         
@@ -327,6 +363,7 @@ class HTMLReportGenerator:
         Returns:
             list: Список транзакцій
         """
+        from utils.currency_converter import convert_currency
         transactions = []
         
         # Доходи
@@ -339,13 +376,21 @@ class HTMLReportGenerator:
             # Перекладаємо назву категорії
             translated_category_name = translate_category_name(category_name, user_id=user_id)
             
+            # Зберігаємо оригінальну валюту та суму
+            income_currency = getattr(income, 'currency', 'UAH')
+            currency_symbol = self._get_currency_symbol(income_currency)
+            
+            # Конвертуємо для сортування
+            converted_amount = convert_currency(income.amount, income_currency, report.currency)
+            
             transactions.append({
                 'date': income.add_date.split()[0] if ' ' in income.add_date else income.add_date,
                 'type': 'income',
                 'category': translated_category_name,
                 'description': income.description if income.description else '',
                 'amount': f"{income.amount:.2f}",
-                'amount_value': income.amount  # Числове значення для сортування
+                'currency': currency_symbol,
+                'amount_value': converted_amount  # Числове значення для сортування
             })
         
         # Витрати
@@ -357,13 +402,21 @@ class HTMLReportGenerator:
             # Перекладаємо назву категорії
             translated_category_name = translate_category_name(category_name, user_id=user_id)
             
+            # Зберігаємо оригінальну валюту та суму
+            expense_currency = getattr(expense, 'currency', 'UAH')
+            currency_symbol = self._get_currency_symbol(expense_currency)
+            
+            # Конвертуємо для сортування
+            converted_amount = convert_currency(expense.amount, expense_currency, report.currency)
+            
             transactions.append({
                 'date': expense.add_date.split()[0] if ' ' in expense.add_date else expense.add_date,
                 'type': 'expense',
                 'category': translated_category_name,
                 'description': expense.description if expense.description else '',
                 'amount': f"{expense.amount:.2f}",
-                'amount_value': expense.amount  # Числове значення для сортування
+                'currency': currency_symbol,
+                'amount_value': converted_amount  # Числове значення для сортування
             })
         
         # Сортування за сумою (найбільші зверху)
@@ -385,31 +438,50 @@ class HTMLReportGenerator:
         from datetime import datetime
         
         # Збираємо дані по днях
-        daily_data = defaultdict(lambda: {'income': 0.0, 'expense': 0.0})
+        daily_data = defaultdict(lambda: {
+            'income': 0.0, 
+            'expense': 0.0,
+            'income_by_currency': defaultdict(float),
+            'expense_by_currency': defaultdict(float)
+        })
         
         # Доходи по днях
         for income in report.incomes:
             date_str = income.add_date.split()[0] if ' ' in income.add_date else income.add_date
+            currency = getattr(income, 'currency', 'UAH')
             daily_data[date_str]['income'] += income.amount
+            daily_data[date_str]['income_by_currency'][currency] += income.amount
         
         # Витрати по днях
         for expense in report.expenses:
             date_str = expense.add_date.split()[0] if ' ' in expense.add_date else expense.add_date
+            currency = getattr(expense, 'currency', 'UAH')
             daily_data[date_str]['expense'] += expense.amount
+            daily_data[date_str]['expense_by_currency'][currency] += expense.amount
         
         # Конвертуємо в список та сортуємо по даті
         result = []
         running_balance = 0.0
+        running_balance_by_currency = defaultdict(float)
         
         for date_str in sorted(daily_data.keys()):
             data = daily_data[date_str]
             running_balance += data['income'] - data['expense']
             
+            # Оновлюємо баланс по валютах
+            for curr, amount in data['income_by_currency'].items():
+                running_balance_by_currency[curr] += amount
+            for curr, amount in data['expense_by_currency'].items():
+                running_balance_by_currency[curr] -= amount
+            
             result.append({
                 'date': date_str,
                 'income': round(data['income'], 2),
                 'expense': round(data['expense'], 2),
-                'balance': round(running_balance, 2)
+                'balance': round(running_balance, 2),
+                'income_by_currency': dict(data['income_by_currency']),
+                'expense_by_currency': dict(data['expense_by_currency']),
+                'balance_by_currency': dict(running_balance_by_currency)
             })
         
         return result

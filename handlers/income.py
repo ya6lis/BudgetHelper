@@ -6,14 +6,16 @@ Handler для обробки доходів користувача.
 
 from telebot.apihelper import ApiTelegramException
 from utils import send_main_menu, answer_callback, validate_amount
-from database import add_income, ensure_user_exists, CategoryRepository
-from locales import get_text, get_current_language
-from keyboards import create_income_types_keyboard, back_button
+from database import add_income, ensure_user_exists, CategoryRepository, get_user
+from locales import get_text, get_current_language, translate_category_name
+from keyboards import create_income_types_keyboard, back_button, create_transaction_currency_keyboard
+from utils.currency_converter import convert_currency, format_amount_with_currency, get_currency_symbol
 from config.callbacks import (
     CALLBACK_ADD_INCOME,
     CALLBACK_BACK_TO_MAIN,
     CALLBACK_BACK_TO_ADD_INCOME,
     CALLBACK_SKIP_DESCRIPTION,
+    CALLBACK_INCOME_CURRENCY_PREFIX,
 )
 
 user_states = {}
@@ -67,8 +69,9 @@ def register_handlers(bot):
             'message_id': call.message.message_id
         }
         
+        translated_category_name = translate_category_name(category.name, user_id=user_id)
         bot.edit_message_text(
-            get_text('income_enter_amount', user_id=user_id).format(category.name),
+            get_text('income_enter_amount', user_id=user_id).format(translated_category_name),
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
             reply_markup=back_button(user_id=user_id, back_callback=CALLBACK_BACK_TO_ADD_INCOME)
@@ -105,39 +108,34 @@ def register_handlers(bot):
                 except Exception:
                     pass
             
-            user_states[user_id]['action'] = 'waiting_income_description'
+            user_states[user_id]['action'] = 'waiting_income_currency'
             user_states[user_id]['income_amount'] = amount
             
-            # Створюємо клавіатуру з кнопкою "Пропустити"
-            from telebot import types
-            markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton(
-                get_text('income_skip_description', user_id=user_id),
-                callback_data=CALLBACK_SKIP_DESCRIPTION
-            ))
+            # Show currency selection keyboard
+            keyboard = create_transaction_currency_keyboard(user_id, transaction_type='income', back_callback=CALLBACK_BACK_TO_ADD_INCOME)
             
             prompt_msg_id = state.get('message_id')
             if prompt_msg_id:
                 try:
                     bot.edit_message_text(
-                        get_text('income_enter_description', user_id=user_id),
+                        get_text('select_transaction_currency', user_id=user_id),
                         chat_id=message.chat.id,
                         message_id=prompt_msg_id,
-                        reply_markup=markup
+                        reply_markup=keyboard
                     )
                 except Exception:
                     # Якщо не вдалося редагувати, створюємо нове повідомлення
                     msg = bot.send_message(
                         message.chat.id,
-                        get_text('income_enter_description', user_id=user_id),
-                        reply_markup=markup
+                        get_text('select_transaction_currency', user_id=user_id),
+                        reply_markup=keyboard
                     )
                     user_states[user_id]['message_id'] = msg.message_id
             else:
                 msg = bot.send_message(
                     message.chat.id,
-                    get_text('income_enter_description', user_id=user_id),
-                    reply_markup=markup
+                    get_text('select_transaction_currency', user_id=user_id),
+                    reply_markup=keyboard
                 )
                 user_states[user_id]['message_id'] = msg.message_id
         else:
@@ -160,6 +158,56 @@ def register_handlers(bot):
             )
             user_states[user_id]['error_message_id'] = error_msg.message_id
     
+    @bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_INCOME_CURRENCY_PREFIX))
+    def process_income_currency_selection(call):
+        """Обробка вибору валюти для доходу."""
+        answer_callback(bot, call)
+        
+        user_id = call.from_user.id
+        ensure_user_exists(user_id, call.from_user.username)
+        
+        state = user_states.get(user_id, {})
+        if state.get('action') != 'waiting_income_currency':
+            return
+        
+        # Extract currency from callback data
+        currency = call.data.replace(CALLBACK_INCOME_CURRENCY_PREFIX, '').upper()
+        state['income_currency'] = currency
+        state['action'] = 'waiting_income_description'
+        
+        # Створюємо клавіатуру з кнопкою "Пропустити"
+        from telebot import types
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton(
+            get_text('income_skip_description', user_id=user_id),
+            callback_data=CALLBACK_SKIP_DESCRIPTION
+        ))
+        
+        # Show conversion info if currency differs from default
+        user = get_user(user_id)
+        amount = state.get('income_amount')
+        conversion_text = ""
+        
+        if currency != user.default_currency and amount:
+            converted_amount = convert_currency(amount, currency, user.default_currency)
+            if converted_amount:
+                converted_formatted = format_amount_with_currency(converted_amount, user.default_currency)
+                currency_symbol = get_currency_symbol(user.default_currency)
+                conversion_text = "\n\n" + get_text('currency_conversion_info', user_id=user_id).format(
+                    currency_symbol,
+                    converted_formatted
+                )
+        
+        try:
+            bot.edit_message_text(
+                get_text('income_enter_description', user_id=user_id) + conversion_text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                reply_markup=markup
+            )
+        except Exception:
+            pass
+    
     @bot.message_handler(func=lambda message: user_states.get(message.from_user.id, {}).get('action') == 'waiting_income_description')
     def process_income_description(message):
         """Обробка введеного опису доходу."""
@@ -169,6 +217,7 @@ def register_handlers(bot):
         state = user_states.get(user_id, {})
         category_id = state.get('income_category_id')
         amount = state.get('income_amount')
+        currency = state.get('income_currency', 'UAH')
         
         if not category_id or not amount:
             send_main_menu(bot, message.chat.id, 'error', user_id=user_id)
@@ -178,7 +227,7 @@ def register_handlers(bot):
         description = message.text.strip() if message.text else None
         
         # Створюємо дохід з описом
-        income = add_income(user_id, amount, category_id, description=description)
+        income = add_income(user_id, amount, category_id, description=description, currency=currency)
         
         # Видаляємо повідомлення
         message_ids_to_delete = user_message_history.get(user_id, [])
@@ -207,16 +256,19 @@ def register_handlers(bot):
         category = CategoryRepository.get_category_by_id(category_id)
         category_display = category.name if category else "Дохід"
         
+        # Format amount with currency
+        amount_text = format_amount_with_currency(income.amount, income.currency)
+        
         # Вибираємо повідомлення залежно від того, чи є опис
         if description:
             success_msg = get_text('income_added_with_description', user_id=user_id).format(
-                income.amount,
+                amount_text,
                 category_display,
                 description
             )
         else:
             success_msg = get_text('income_added', user_id=user_id).format(
-                income.amount,
+                amount_text,
                 category_display
             )
         
@@ -233,6 +285,7 @@ def register_handlers(bot):
         state = user_states.get(user_id, {})
         category_id = state.get('income_category_id')
         amount = state.get('income_amount')
+        currency = state.get('income_currency', 'UAH')
         
         if not category_id or not amount:
             send_main_menu(bot, call.message.chat.id, 'error', call.message.message_id, user_id=user_id)
@@ -240,7 +293,7 @@ def register_handlers(bot):
             return
         
         # Створюємо дохід без опису
-        income = add_income(user_id, amount, category_id, description=None)
+        income = add_income(user_id, amount, category_id, description=None, currency=currency)
         
         # Видаляємо повідомлення
         message_ids_to_delete = user_message_history.get(user_id, [])
@@ -262,8 +315,11 @@ def register_handlers(bot):
         category = CategoryRepository.get_category_by_id(category_id)
         category_display = category.name if category else "Дохід"
         
+        # Format amount with currency
+        amount_text = format_amount_with_currency(income.amount, income.currency)
+        
         success_msg = get_text('income_added', user_id=user_id).format(
-            income.amount,
+            amount_text,
             category_display
         )
         send_main_menu(bot, call.message.chat.id, success_msg, user_id=user_id)

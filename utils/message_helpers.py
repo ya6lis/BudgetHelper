@@ -114,11 +114,15 @@ def answer_callback(bot, callback_query, text=None, show_alert=False):
         text: Текст відповіді (опціонально)
         show_alert: Показати як alert (True) чи toast (False)
     """
-    bot.answer_callback_query(
-        callback_query.id,
-        text=text,
-        show_alert=show_alert
-    )
+    try:
+        bot.answer_callback_query(
+            callback_query.id,
+            text=text,
+            show_alert=show_alert
+        )
+    except Exception:
+        # Ігноруємо помилки відповіді на застарілі callback запити
+        pass
 
 
 def create_inline_keyboard_from_dict(items_dict, row_width=2, add_back=True):

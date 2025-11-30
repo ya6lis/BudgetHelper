@@ -41,6 +41,8 @@ TIME_PERIODS = {
     'year': 'За рік',
 }
 
+# Доступні валюти
+AVAILABLE_CURRENCIES = ['UAH', 'USD', 'EUR']
 DEFAULT_CURRENCY = 'UAH'
 DB_FILE = 'budget_helper.db'
 DEFAULT_LANGUAGE = 'uk'
