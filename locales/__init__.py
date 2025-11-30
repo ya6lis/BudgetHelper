@@ -13,6 +13,8 @@ from .locale_manager import (
     get_current_language,
     translate_income_category,
     translate_expense_category,
+    translate_category_name,
+    get_period_name,
     get_category_key_from_callback,
 )
 
@@ -26,5 +28,7 @@ __all__ = [
     'get_current_language',
     'translate_income_category',
     'translate_expense_category',
+    'translate_category_name',
+    'get_period_name',
     'get_category_key_from_callback',
 ]

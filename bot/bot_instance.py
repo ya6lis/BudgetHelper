@@ -22,7 +22,7 @@ def init_bot():
     """
     try:
         print("[*] Importing handlers...", flush=True)
-        from handlers import start, income, expenses, finance, settings, misc
+        from handlers import start, income, expenses, finance, settings, misc, report, categories
         
         print("[*] Registering handlers...", flush=True)
         start.register_handlers(bot)
@@ -30,10 +30,12 @@ def init_bot():
         expenses.register_handlers(bot)
         finance.register_handlers(bot)
         settings.register_handlers(bot)
+        categories.register_handlers(bot)
+        report.register_handlers(bot)
         misc.register_handlers(bot)
         
         print("[OK] Bot initialized successfully!", flush=True)
-        print("[OK] Registered handlers: start, income, expenses, finance, settings, misc", flush=True)
+        print("[OK] Registered handlers: start, income, expenses, finance, settings, categories, report, misc", flush=True)
         return bot
         
     except Exception as e:

@@ -8,12 +8,18 @@ from .db_manager import (
     init_db,
     get_connection,
     ensure_user,
+    save_bot_message,
+    get_user_bot_messages,
+    clear_user_bot_messages,
+    delete_bot_message,
 )
 from .user_repository import (
     get_user,
     create_user,
     update_user_language,
+    get_user_language,
     ensure_user_exists,
+    get_all_user_ids,
 )
 from .income_repository import (
     add_income,
@@ -31,18 +37,29 @@ from .expense_repository import (
     update_expense,
     delete_expense,
 )
+from .report_repository import (
+    generate_user_report,
+    compare_with_previous_period,
+)
+from .category_repository import CategoryRepository
 
 __all__ = [
     # DB Manager
     'init_db',
     'get_connection',
     'ensure_user',
+    'save_bot_message',
+    'get_user_bot_messages',
+    'clear_user_bot_messages',
+    'delete_bot_message',
     
     # User Repository
     'get_user',
     'create_user',
     'update_user_language',
+    'get_user_language',
     'ensure_user_exists',
+    'get_all_user_ids',
     
     # Income Repository
     'add_income',
@@ -59,5 +76,12 @@ __all__ = [
     'get_expenses_aggregated',
     'update_expense',
     'delete_expense',
+    
+    # Report Repository
+    'generate_user_report',
+    'compare_with_previous_period',
+    
+    # Category Repository
+    'CategoryRepository',
 ]
 

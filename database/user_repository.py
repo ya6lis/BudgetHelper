@@ -87,6 +87,40 @@ def update_user_language(user_id: int, language: str) -> bool:
             return cursor.rowcount > 0
 
 
+def get_user_language(user_id: int) -> Optional[str]:
+    """
+    Отримати мову користувача з бази даних.
+    
+    Args:
+        user_id: ID користувача
+    
+    Returns:
+        Optional[str]: Мова користувача ('uk', 'en') або None
+    """
+    with _lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT language FROM users WHERE user_id = ?
+            ''', (user_id,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+
+def get_all_user_ids():
+    """
+    Отримати список всіх user_id з бази даних.
+    
+    Returns:
+        list: Список ID користувачів
+    """
+    with _lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT user_id FROM users')
+            return [row[0] for row in cursor.fetchall()]
+
+
 def ensure_user_exists(user_id: int, username: str = None) -> User:
     """
     Перевірити чи існує користувач, якщо ні - створити.

@@ -5,7 +5,7 @@
 """
 
 from typing import Dict, List
-from locales import get_text, translate_income_category, translate_expense_category
+from locales import get_text, translate_category_name
 from models import Income, Expense
 
 
@@ -26,9 +26,9 @@ def format_income_list(data: dict, period_name: str, user_id: int = None) -> str
     aggregated = data.get('aggregated', {})
     total = data.get('total', 0.0)
     
-    for category_key, amount in aggregated.items():
-        # Перекладаємо ключ категорії на мову користувача
-        category_display = translate_income_category(category_key, user_id=user_id)
+    for category_name, amount in aggregated.items():
+        # Перекладаємо назву категорії з БД
+        category_display = translate_category_name(category_name, user_id=user_id)
         msg += f"— {category_display} : {amount:.2f} UAH\n"
     
     msg += get_text('view_incomes_total', user_id=user_id).format(total)
@@ -52,9 +52,9 @@ def format_expense_list(data: dict, period_name: str, user_id: int = None) -> st
     aggregated = data.get('aggregated', {})
     total = data.get('total', 0.0)
     
-    for category_key, amount in aggregated.items():
-        # Перекладаємо ключ категорії на мову користувача
-        category_display = translate_expense_category(category_key, user_id=user_id)
+    for category_name, amount in aggregated.items():
+        # Перекладаємо назву категорії з БД
+        category_display = translate_category_name(category_name, user_id=user_id)
         msg += f"— {category_display} : {amount:.2f} UAH\n"
     
     msg += get_text('view_expenses_total', user_id=user_id).format(total)

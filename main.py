@@ -10,8 +10,43 @@ if sys.platform == 'win32':
 
 os.environ['PYTHONUNBUFFERED'] = '1'
 
-from database import init_db
+from database import init_db, get_all_user_ids, get_user_bot_messages, clear_user_bot_messages
 from bot import bot, init_bot
+
+
+def clear_chat_history():
+    """Очищує історію чату для всіх користувачів."""
+    try:
+        print("[*] Clearing chat history for all users...", flush=True)
+        user_ids = get_all_user_ids()
+        
+        for user_id in user_ids:
+            try:
+                # Отримуємо всі збережені message_id для цього користувача
+                message_ids = get_user_bot_messages(user_id)
+                
+                # Видаляємо всі повідомлення
+                deleted_count = 0
+                for msg_id in message_ids:
+                    try:
+                        bot.delete_message(user_id, msg_id)
+                        deleted_count += 1
+                    except Exception:
+                        # Ігноруємо помилки (повідомлення вже видалено або недоступно)
+                        pass
+                
+                # Очищаємо список збережених повідомлень
+                clear_user_bot_messages(user_id)
+                
+                if deleted_count > 0:
+                    print(f"[OK] Deleted {deleted_count} messages for user {user_id}", flush=True)
+                
+            except Exception as e:
+                print(f"[WARNING] Could not process user {user_id}: {e}", flush=True)
+        
+        print(f"[OK] Processed {len(user_ids)} users", flush=True)
+    except Exception as e:
+        print(f"[WARNING] Could not clear chat history: {e}", flush=True)
 
 
 def main():
@@ -21,6 +56,9 @@ def main():
         
         print("[*] Initializing bot and registering handlers...", flush=True)
         init_bot()
+        
+        # Очищаємо історію чату та відправляємо /start всім користувачам
+        clear_chat_history()
         
         print("[*] Bot is running...", flush=True)
         print("[*] Press Ctrl+C to stop", flush=True)

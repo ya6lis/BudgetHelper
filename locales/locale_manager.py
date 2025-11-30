@@ -38,8 +38,14 @@ def get_text(key, lang=None, user_id=None):
     """
     if lang:
         language = lang
-    elif user_id and user_id in USER_LANGUAGES:
-        language = USER_LANGUAGES[user_id]
+    elif user_id:
+        # Якщо мови немає в пам'яті, завантажуємо з БД
+        if user_id not in USER_LANGUAGES:
+            from database import get_user_language
+            db_lang = get_user_language(user_id)
+            if db_lang:
+                USER_LANGUAGES[user_id] = db_lang
+        language = USER_LANGUAGES.get(user_id, DEFAULT_LANGUAGE)
     else:
         language = DEFAULT_LANGUAGE
     
@@ -144,6 +150,72 @@ def translate_expense_category(category_key, lang=None, user_id=None):
         language = DEFAULT_LANGUAGE
     
     return EXPENSE_CATEGORY_TRANSLATIONS.get(category_key, {}).get(language, category_key)
+
+
+def translate_category_name(category_name, lang=None, user_id=None):
+    """
+    Перекладає назву категорії з БД (українська) на потрібну мову.
+    Працює тільки для дефолтних категорій. Кастомні категорії не перекладаються.
+    
+    Args:
+        category_name: Назва категорії з БД (українська)
+        lang: Мова (опціонально)
+        user_id: ID користувача (опціонально)
+    
+    Returns:
+        str: Переклад назви або оригінальна назва
+    """
+    if lang:
+        language = lang
+    elif user_id and user_id in USER_LANGUAGES:
+        language = USER_LANGUAGES[user_id]
+    else:
+        language = DEFAULT_LANGUAGE
+    
+    # Якщо мова українська, повертаємо як є
+    if language == 'uk':
+        return category_name
+    
+    # Мапінг дефолтних категорій доходів
+    INCOME_NAME_MAPPING = {
+        'Зарплата': 'Salary',
+        'Премія': 'Bonus',
+        'Подарунок': 'Gift',
+        'Інвестиції': 'Investments',
+        'Інше': 'Other',
+        'Інші': 'Other'
+    }
+    
+    # Мапінг дефолтних категорій витрат
+    EXPENSE_NAME_MAPPING = {
+        'Їжа': 'Food',
+        'Транспорт': 'Transport',
+        'Здоров\'я': 'Health',
+        'Розваги': 'Entertainment',
+        'Інше': 'Other',
+        'Інші': 'Other'
+    }
+    
+    # Об'єднаний мапінг
+    NAME_MAPPING = {**INCOME_NAME_MAPPING, **EXPENSE_NAME_MAPPING}
+    
+    # Повертаємо переклад або оригінальну назву
+    return NAME_MAPPING.get(category_name, category_name)
+
+
+def get_period_name(period: str, user_id: int = None) -> str:
+    """
+    Отримати перекладену назву періоду.
+    
+    Args:
+        period: Ключ періоду ('today', 'week', 'month', 'year', 'all')
+        user_id: ID користувача для визначення мови
+    
+    Returns:
+        str: Переклад назви періоду
+    """
+    key = f'period_name_{period}'
+    return get_text(key, user_id=user_id)
 
 
 def get_category_key_from_callback(callback_data):

@@ -7,23 +7,26 @@
 from datetime import datetime
 from threading import Lock
 from typing import List, Optional
-from .db_manager import get_connection, ensure_user
+from .db_manager import get_connection, ensure_user, generate_uuid
 from .utils import get_date_range_for_period
 from models import Income
 from config.constants import DEFAULT_CURRENCY
+from locales import translate_category_name
 
 _lock = Lock()
 
 
-def add_income(user_id: int, amount: float, description: str, currency: str = DEFAULT_CURRENCY) -> Income:
+def add_income(user_id: int, amount: float, category_id: int, description: str = None, currency: str = DEFAULT_CURRENCY, add_date: str = None) -> Income:
     """
     Додати новий дохід для користувача.
     
     Args:
         user_id: ID користувача Telegram
         amount: Сума доходу
-        description: Опис/категорія доходу
+        category_id: ID категорії
+        description: Опис (опціонально)
         currency: Валюта (за замовчуванням UAH)
+        add_date: Дата додавання (опціонально, за замовчуванням - поточна)
     
     Returns:
         Income: Створений об'єкт Income з ID
@@ -31,21 +34,27 @@ def add_income(user_id: int, amount: float, description: str, currency: str = DE
     income = Income(
         user_id=user_id,
         amount=amount,
+        category_id=category_id,
         description=description,
         currency=currency
     )
+    
+    # Якщо передана дата, використовуємо її
+    if add_date:
+        income.add_date = add_date
+        income.update_date = add_date
     
     with _lock:
         with get_connection() as conn:
             cursor = conn.cursor()
             ensure_user(cursor, user_id)
+            income.id = generate_uuid()
             cursor.execute('''
-                INSERT INTO incomes (user_id, amount, description, currency, add_date, update_date)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (income.user_id, income.amount, income.description, 
+                INSERT INTO incomes (id, user_id, amount, category_id, description, currency, add_date, update_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (income.id, income.user_id, income.amount, income.category_id, income.description,
                   income.currency, income.add_date, income.update_date))
             conn.commit()
-            income.id = cursor.lastrowid
     
     return income
 
@@ -64,7 +73,7 @@ def get_income_by_id(income_id: int) -> Optional[Income]:
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT id, user_id, amount, description, currency, add_date, update_date
+                SELECT id, user_id, amount, category_id, description, currency, add_date, update_date
                 FROM incomes WHERE id = ?
             ''', (income_id,))
             row = cursor.fetchone()
@@ -74,10 +83,11 @@ def get_income_by_id(income_id: int) -> Optional[Income]:
                     'id': row[0],
                     'user_id': row[1],
                     'amount': row[2],
-                    'description': row[3],
-                    'currency': row[4],
-                    'add_date': row[5],
-                    'update_date': row[6]
+                    'category_id': row[3],
+                    'description': row[4],
+                    'currency': row[5],
+                    'add_date': row[6],
+                    'update_date': row[7]
                 })
             return None
 
@@ -96,7 +106,7 @@ def get_all_incomes(user_id: int) -> List[Income]:
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT id, user_id, amount, description, currency, add_date, update_date
+                SELECT id, user_id, amount, category_id, description, currency, add_date, update_date
                 FROM incomes WHERE user_id = ?
                 ORDER BY add_date DESC
             ''', (user_id,))
@@ -106,10 +116,11 @@ def get_all_incomes(user_id: int) -> List[Income]:
                 'id': row[0],
                 'user_id': row[1],
                 'amount': row[2],
-                'description': row[3],
-                'currency': row[4],
-                'add_date': row[5],
-                'update_date': row[6]
+                'category_id': row[3],
+                'description': row[4],
+                'currency': row[5],
+                'add_date': row[6],
+                'update_date': row[7]
             }) for row in rows]
 
 
@@ -128,7 +139,7 @@ def get_incomes_aggregated(user_id: int, period: str) -> dict:
     
     # Використовуємо однаковий запит для всіх періодів
     query = '''
-        SELECT id, user_id, amount, description, currency, add_date, update_date
+        SELECT id, user_id, amount, category_id, description, currency, add_date, update_date
         FROM incomes
         WHERE user_id = ? AND add_date BETWEEN ? AND ?
         ORDER BY add_date DESC
@@ -145,20 +156,28 @@ def get_incomes_aggregated(user_id: int, period: str) -> dict:
                 'id': row[0],
                 'user_id': row[1],
                 'amount': row[2],
-                'description': row[3],
-                'currency': row[4],
-                'add_date': row[5],
-                'update_date': row[6]
+                'category_id': row[3],
+                'description': row[4],
+                'currency': row[5],
+                'add_date': row[6],
+                'update_date': row[7]
             }) for row in rows]
+            
+            # Отримуємо категорії для агрегування
+            from database import CategoryRepository
             
             # Агрегування по категоріях
             aggregated = {}
             total = 0.0
             for income in incomes:
-                if income.description not in aggregated:
-                    aggregated[income.description] = 0.0
-                aggregated[income.description] += income.amount
-                total += income.amount
+                category = CategoryRepository.get_category_by_id(income.category_id)
+                category_name = category.name if category else 'Інше'
+                # Не перекладаємо назви в aggregated - переклад буде в formatters
+                # Зберігаємо оригінальні назви з БД
+                if category_name not in aggregated:
+                    aggregated[category_name] = 0.0
+                aggregated[category_name] = round(aggregated[category_name] + income.amount, 2)
+                total = round(total + income.amount, 2)
             
             return {
                 'incomes': incomes,
