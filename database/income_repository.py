@@ -164,25 +164,58 @@ def get_incomes_aggregated(user_id: int, period: str) -> dict:
             }) for row in rows]
             
             # Отримуємо категорії для агрегування
-            from database import CategoryRepository
+            from database import CategoryRepository, get_user
+            from utils.currency_converter import convert_currency
+            from config.constants import DEFAULT_CURRENCY
             
-            # Агрегування по категоріях
+            # Отримуємо дефолтну валюту користувача
+            user = get_user(user_id)
+            user_currency = user.default_currency if user else DEFAULT_CURRENCY
+            
+            # Агрегування по категоріях з конвертацією валют
             aggregated = {}
+            aggregated_by_category_currency = {}  # {category: {currency: amount}}
+            by_currency = {}  # Розбивка по валютах (оригінальні суми)
             total = 0.0
             for income in incomes:
                 category = CategoryRepository.get_category_by_id(income.category_id)
                 category_name = category.name if category else 'Інше'
+                
+                # Додаємо до розбивки по валютах
+                if income.currency not in by_currency:
+                    by_currency[income.currency] = 0.0
+                by_currency[income.currency] = round(by_currency[income.currency] + income.amount, 2)
+                
+                # Зберігаємо оригінальні суми по категоріях та валютах
+                if category_name not in aggregated_by_category_currency:
+                    aggregated_by_category_currency[category_name] = {}
+                if income.currency not in aggregated_by_category_currency[category_name]:
+                    aggregated_by_category_currency[category_name][income.currency] = 0.0
+                aggregated_by_category_currency[category_name][income.currency] = round(
+                    aggregated_by_category_currency[category_name][income.currency] + income.amount, 2
+                )
+                
+                # Конвертуємо суму в дефолтну валюту користувача для загального підрахунку
+                amount_in_user_currency = income.amount
+                if income.currency != user_currency:
+                    converted = convert_currency(income.amount, income.currency, user_currency)
+                    if converted:
+                        amount_in_user_currency = converted
+                
                 # Не перекладаємо назви в aggregated - переклад буде в formatters
                 # Зберігаємо оригінальні назви з БД
                 if category_name not in aggregated:
                     aggregated[category_name] = 0.0
-                aggregated[category_name] = round(aggregated[category_name] + income.amount, 2)
-                total = round(total + income.amount, 2)
+                aggregated[category_name] = round(aggregated[category_name] + amount_in_user_currency, 2)
+                total = round(total + amount_in_user_currency, 2)
             
             return {
                 'incomes': incomes,
                 'aggregated': aggregated,
-                'total': total
+                'aggregated_by_category_currency': aggregated_by_category_currency,
+                'total': total,
+                'currency': user_currency,
+                'by_currency': by_currency  # Оригінальні суми по валютах
             }
 
 

@@ -14,6 +14,8 @@ from .main_keyboards import (
     create_period_with_back_keyboard,
     create_language_keyboard,
     create_settings_keyboard,
+    create_currency_keyboard,
+    create_transaction_currency_keyboard,
 )
 
 __all__ = [
@@ -26,4 +28,6 @@ __all__ = [
     'create_period_with_back_keyboard',
     'create_language_keyboard',
     'create_settings_keyboard',
+    'create_currency_keyboard',
+    'create_transaction_currency_keyboard',
 ]

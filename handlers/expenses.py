@@ -6,14 +6,16 @@ Handler для обробки витрат користувача.
 
 from telebot.apihelper import ApiTelegramException
 from utils import send_main_menu, answer_callback, validate_amount
-from database import add_expense, ensure_user_exists, CategoryRepository
+from database import add_expense, ensure_user_exists, CategoryRepository, get_user
 from locales import get_text, get_current_language
-from keyboards import create_expense_types_keyboard, back_button
+from keyboards import create_expense_types_keyboard, back_button, create_transaction_currency_keyboard
+from utils.currency_converter import convert_currency, format_amount_with_currency, get_currency_symbol
 from config.callbacks import (
     CALLBACK_ADD_EXPENSE,
     CALLBACK_BACK_TO_MAIN,
     CALLBACK_BACK_TO_ADD_EXPENSE,
     CALLBACK_SKIP_DESCRIPTION,
+    CALLBACK_EXPENSE_CURRENCY_PREFIX,
 )
 
 user_states = {}
@@ -105,39 +107,34 @@ def register_handlers(bot):
                 except Exception:
                     pass
             
-            user_states[user_id]['action'] = 'waiting_expense_description'
+            user_states[user_id]['action'] = 'waiting_expense_currency'
             user_states[user_id]['expense_amount'] = amount
             
-            # Створюємо клавіатуру з кнопкою "Пропустити"
-            from telebot import types
-            markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton(
-                get_text('expense_skip_description', user_id=user_id),
-                callback_data=CALLBACK_SKIP_DESCRIPTION
-            ))
+            # Show currency selection keyboard
+            keyboard = create_transaction_currency_keyboard(user_id, transaction_type='expense', back_callback=CALLBACK_BACK_TO_ADD_EXPENSE)
             
             prompt_msg_id = state.get('message_id')
             if prompt_msg_id:
                 try:
                     bot.edit_message_text(
-                        get_text('expense_enter_description', user_id=user_id),
+                        get_text('select_transaction_currency', user_id=user_id),
                         chat_id=message.chat.id,
                         message_id=prompt_msg_id,
-                        reply_markup=markup
+                        reply_markup=keyboard
                     )
                 except Exception:
                     # Якщо не вдалося редагувати, створюємо нове повідомлення
                     msg = bot.send_message(
                         message.chat.id,
-                        get_text('expense_enter_description', user_id=user_id),
-                        reply_markup=markup
+                        get_text('select_transaction_currency', user_id=user_id),
+                        reply_markup=keyboard
                     )
                     user_states[user_id]['message_id'] = msg.message_id
             else:
                 msg = bot.send_message(
                     message.chat.id,
-                    get_text('expense_enter_description', user_id=user_id),
-                    reply_markup=markup
+                    get_text('select_transaction_currency', user_id=user_id),
+                    reply_markup=keyboard
                 )
                 user_states[user_id]['message_id'] = msg.message_id
         else:
@@ -160,6 +157,56 @@ def register_handlers(bot):
             )
             user_states[user_id]['error_message_id'] = error_msg.message_id
     
+    @bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_EXPENSE_CURRENCY_PREFIX))
+    def process_expense_currency_selection(call):
+        """Обробка вибору валюти для витрати."""
+        answer_callback(bot, call)
+        
+        user_id = call.from_user.id
+        ensure_user_exists(user_id, call.from_user.username)
+        
+        state = user_states.get(user_id, {})
+        if state.get('action') != 'waiting_expense_currency':
+            return
+        
+        # Extract currency from callback data
+        currency = call.data.replace(CALLBACK_EXPENSE_CURRENCY_PREFIX, '').upper()
+        state['expense_currency'] = currency
+        state['action'] = 'waiting_expense_description'
+        
+        # Створюємо клавіатуру з кнопкою "Пропустити"
+        from telebot import types
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton(
+            get_text('expense_skip_description', user_id=user_id),
+            callback_data=CALLBACK_SKIP_DESCRIPTION
+        ))
+        
+        # Show conversion info if currency differs from default
+        user = get_user(user_id)
+        amount = state.get('expense_amount')
+        conversion_text = ""
+        
+        if currency != user.default_currency and amount:
+            converted_amount = convert_currency(amount, currency, user.default_currency)
+            if converted_amount:
+                converted_formatted = format_amount_with_currency(converted_amount, user.default_currency)
+                currency_symbol = get_currency_symbol(user.default_currency)
+                conversion_text = "\n\n" + get_text('currency_conversion_info', user_id=user_id).format(
+                    currency_symbol,
+                    converted_formatted
+                )
+        
+        try:
+            bot.edit_message_text(
+                get_text('expense_enter_description', user_id=user_id) + conversion_text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                reply_markup=markup
+            )
+        except Exception:
+            pass
+    
     @bot.message_handler(func=lambda message: user_states.get(message.from_user.id, {}).get('action') == 'waiting_expense_description')
     def process_expense_description(message):
         """Обробка введеного опису витрати."""
@@ -169,6 +216,7 @@ def register_handlers(bot):
         state = user_states.get(user_id, {})
         category_id = state.get('expense_category_id')
         amount = state.get('expense_amount')
+        currency = state.get('expense_currency', 'UAH')
         
         if not category_id or not amount:
             send_main_menu(bot, message.chat.id, 'error', user_id=user_id)
@@ -178,7 +226,7 @@ def register_handlers(bot):
         description = message.text.strip() if message.text else None
         
         # Створюємо витрату з описом
-        expense = add_expense(user_id, amount, category_id, description=description)
+        expense = add_expense(user_id, amount, category_id, description=description, currency=currency)
         
         # Видаляємо повідомлення
         message_ids_to_delete = user_message_history.get(user_id, [])
@@ -207,16 +255,19 @@ def register_handlers(bot):
         category = CategoryRepository.get_category_by_id(category_id)
         category_display = category.name if category else "Витрата"
         
+        # Format amount with currency
+        amount_text = format_amount_with_currency(expense.amount, expense.currency)
+        
         # Вибираємо повідомлення залежно від того, чи є опис
         if description:
             success_msg = get_text('expense_added_with_description', user_id=user_id).format(
-                expense.amount,
+                amount_text,
                 category_display,
                 description
             )
         else:
             success_msg = get_text('expense_added', user_id=user_id).format(
-                expense.amount,
+                amount_text,
                 category_display
             )
         
@@ -233,6 +284,7 @@ def register_handlers(bot):
         state = user_states.get(user_id, {})
         category_id = state.get('expense_category_id')
         amount = state.get('expense_amount')
+        currency = state.get('expense_currency', 'UAH')
         
         if not category_id or not amount:
             send_main_menu(bot, call.message.chat.id, 'error', call.message.message_id, user_id=user_id)
@@ -240,7 +292,7 @@ def register_handlers(bot):
             return
         
         # Створюємо витрату без опису
-        expense = add_expense(user_id, amount, category_id, description=None)
+        expense = add_expense(user_id, amount, category_id, description=None, currency=currency)
         
         # Видаляємо повідомлення
         message_ids_to_delete = user_message_history.get(user_id, [])
@@ -262,8 +314,11 @@ def register_handlers(bot):
         category = CategoryRepository.get_category_by_id(category_id)
         category_display = category.name if category else "Витрата"
         
+        # Format amount with currency
+        amount_text = format_amount_with_currency(expense.amount, expense.currency)
+        
         success_msg = get_text('expense_added', user_id=user_id).format(
-            expense.amount,
+            amount_text,
             category_display
         )
         send_main_menu(bot, call.message.chat.id, success_msg, user_id=user_id)

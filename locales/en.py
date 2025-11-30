@@ -39,11 +39,11 @@ TEXTS_EN = {
     # Incomes
     'income_select_type': '💰 Adding Income\n\n📋 Select the category your income belongs to:\n\n💡 This will help you better analyze income sources.',
     'income_enter_amount': '💵 Enter income amount for category "{}":\n\n📝 Example: 5000 or 5000.50 or 5000,50',
-    'income_added': '✅ Income added: {} UAH — {}\n\n💡 Now you can:\n• Add another income\n• View statistics in "My Finances"',
+    'income_added': '✅ Income added: {} — {}\n\n💡 Now you can:\n• Add another income\n• View statistics in "My Finances"',
     'income_invalid_amount': '⚠️ Invalid amount!\n\n✅ Correct: 100, 250.50, 250,50\n❌ Incorrect: 0, -100, nan, inf\n\n📌 Requirements:\n• Numbers only (dot or comma)\n• Greater than 0.01 UAH\n• Less than 1,000,000,000 UAH\n\nTry again or go back.',
     'income_enter_description': '📝 Enter income description (optional):\n\n💡 For example: "October salary", "Project bonus", "Birthday gift"\n\n⏭ Or press "Skip" to add income without description.',
     'income_skip_description': '⏭ Skip',
-    'income_added_with_description': '✅ Income added: {} UAH — {}\n📝 Description: {}\n\n💡 Now you can:\n• Add another income\n• View statistics in "My Finances"',
+    'income_added_with_description': '✅ Income added: {} — {}\n📝 Description: {}\n\n💡 Now you can:\n• Add another income\n• View statistics in "My Finances"',
     'income_type_salary': 'Salary',
     'income_type_bonus': 'Bonus',
     'income_type_gift': 'Gift',
@@ -55,17 +55,17 @@ TEXTS_EN = {
     'view_incomes_period_error': 'Error in period selection. Try again.',
     'view_incomes_no_data': '💡 Unfortunately, there are no incomes for the selected period.\n\n📝 Add your first income through the main menu!',
     'view_incomes_title': "📈 Incomes for period '{}':\n\n",
-    'view_incomes_total': '\n🔹 Total income: {:.2f} UAH',
+    'view_incomes_total': '\n🔹 Total income: {}',
     'view_incomes_select_another': 'Select period to view incomes:',
     
     # Expenses
     'expense_select_type': '💸 Adding Expense\n\n📋 Select the category your expense belongs to:\n\n💡 This will help you track where your money goes.',
     'expense_enter_amount': '💵 Enter expense amount for category "{}":\n\n📝 Example: 150 or 150.75 or 150,75',
-    'expense_added': '✅ Expense added: {} UAH — {}\n\n💡 Now you can:\n• Add another expense\n• View statistics in "My Finances"',
+    'expense_added': '✅ Expense added: {} — {}\n\n💡 Now you can:\n• Add another expense\n• View statistics in "My Finances"',
     'expense_invalid_amount': '⚠️ Invalid amount!\n\n✅ Correct: 50, 125.99, 125,99\n❌ Incorrect: 0, -50, nan, inf\n\n📌 Requirements:\n• Numbers only (dot or comma)\n• Greater than 0.01 UAH\n• Less than 1,000,000,000 UAH\n\nTry again or go back.',
     'expense_enter_description': '📝 Enter expense description (optional):\n\n💡 For example: "Bought groceries", "Paid internet bill", "Taxi ride"\n\n⏭ Or press "Skip" to add expense without description.',
     'expense_skip_description': '⏭ Skip',
-    'expense_added_with_description': '✅ Expense added: {} UAH — {}\n📝 Description: {}\n\n💡 Now you can:\n• Add another expense\n• View statistics in "My Finances"',
+    'expense_added_with_description': '✅ Expense added: {} — {}\n📝 Description: {}\n\n💡 Now you can:\n• Add another expense\n• View statistics in "My Finances"',
     
     # View expenses
     'view_expenses_select_period': '💸 View Expenses\n\n📅 Select the period for which you want to see detailed information about your expenses:\n\n💡 You will see all expenses grouped by categories.',
@@ -73,7 +73,7 @@ TEXTS_EN = {
     'view_expenses_period_error': 'Error in period selection. Try again.',
     'view_expenses_no_data': '💡 Unfortunately, there are no expenses for the selected period.\n\n📝 Add your first expense through the main menu!',
     'view_expenses_title': "💸 Expenses for period '{}':\n\n",
-    'view_expenses_total': '\n🔹 Total expenses: {:.2f} UAH',
+    'view_expenses_total': '\n🔹 Total expenses: {}',
     'view_expenses_select_another': 'Select period to view expenses:',
     
     # Finances
@@ -84,10 +84,10 @@ TEXTS_EN = {
     'view_general_select_period': '📊 General Finances\n\n📅 Select a period to view your balance:\n\n💡 You will see income, expenses, and balance for the selected period.',
     'view_general_no_data': '💡 Unfortunately, there are no financial transactions for the selected period.\n\n📝 Add income or expenses through the main menu!',
     'view_general_title': "📊 General Finances '{}'\n\n",
-    'view_general_income': '💰 Income: {:.2f} UAH',
-    'view_general_expense': '💸 Expenses: {:.2f} UAH',
+    'view_general_income': '💰 Income: {}',
+    'view_general_expense': '💸 Expenses: {}',
     'view_general_balance_positive': '\n📈 Balance: +{:.2f} UAH\n\n✅ Your finances are positive!',
-    'view_general_balance_negative': '\n📉 Balance: {:.2f} UAH\n\n⚠️ Expenses exceed income.',
+    'view_general_balance_negative': '\n📉 Balance: {}\n\n⚠️ Expenses exceed income.',
     'view_general_balance_zero': '\n⚖️ Balance: 0.00 UAH\n\n💡 Income and expenses are balanced.',
     'view_general_select_another': 'Select period to view general finances:',
     
@@ -164,12 +164,21 @@ TEXTS_EN = {
     'unknown_category': 'Unknown Category',
     
     # Settings
-    'settings_menu': '⚙️ Settings\n\n🛠 Here you can:\n• Change interface language\n• Manage income and expense categories\n\nSelect an option:',
+    'settings_menu': '⚙️ Settings\n\n🛠 Here you can:\n• Change interface language\n• Change default currency\n• Manage income and expense categories\n\nSelect an option:',
     'settings_change_language': '🌐 Change Language',
+    'settings_change_currency': '💱 Change Currency',
     'settings_manage_categories': '📑 Manage Categories',
-    'settings_select_language': '🌐 Select interface language:\n\n🇺🇦 Українська\n🇬🇧 English\n\nThe selected language will be applied to all menus and messages.',
-    'settings_language_changed': '✅ Language changed successfully!\n\n💡 Now the entire interface will be displayed in the selected language.',
-    'settings_invalid_language': '❌ Invalid language choice. Try again.',
+    'settings_select_language': '🌐 Select interface language:\n\n🇺🇦 Ukrainian\n🇬🇧 English\n\nThe selected language will be applied to all menus and messages.',
+    'settings_language_changed': '✅ Language changed successfully!\n\n💡 The entire interface will now be displayed in the selected language.',
+    'settings_invalid_language': '❌ Invalid language selection. Try again.',
+    
+    # Currency
+    'settings_select_currency': '💱 Select default currency:\n\n💡 This currency will be used for new income and expenses.\n\n🔄 Current exchange rates:\n{}',
+    'settings_currency_changed': '✅ Currency changed to {}!\n\n💡 New income and expenses will be added in this currency by default.',
+    'settings_invalid_currency': '❌ Invalid currency selection. Try again.',
+    'select_transaction_currency': '💱 Select currency for this transaction:\n\n💡 You can choose a currency different from your default.\n\n✓ - your default currency',
+    'currency_conversion_info': '🔄 Approximate conversion to {}: {}',
+    'by_currency': 'By currency',
     
     # Category Management
     'category_management_menu': '📑 Category Management\n\n💡 Here you can:\n• Add your own income/expense categories\n• View all categories\n• Delete custom categories\n\nSelect an option:',

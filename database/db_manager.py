@@ -28,7 +28,8 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
                 language TEXT DEFAULT 'uk',
-                username TEXT
+                username TEXT,
+                default_currency TEXT DEFAULT 'UAH'
             );
             ''')
             
@@ -64,6 +65,7 @@ def init_db():
                 amount REAL,
                 category_id TEXT,
                 description TEXT,
+                currency TEXT DEFAULT 'UAH',
                 add_date TEXT,
                 update_date TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,

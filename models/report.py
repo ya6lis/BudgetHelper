@@ -54,6 +54,11 @@ class ReportData:
     expense_count: int
     transaction_count: int
     
+    currency: str = 'UAH'  # Валюта звіту
+    income_by_currency: Optional[Dict[str, float]] = None  # Розбивка доходів по валютах
+    expense_by_currency: Optional[Dict[str, float]] = None  # Розбивка витрат по валютах
+    income_by_category_currency: Optional[Dict[str, Dict[str, float]]] = None  # {category: {currency: amount}}
+    expense_by_category_currency: Optional[Dict[str, Dict[str, float]]] = None  # {category: {currency: amount}}
     previous_period: Optional['PeriodComparison'] = None
     
     def to_dict(self) -> dict:

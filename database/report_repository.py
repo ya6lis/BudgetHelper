@@ -39,6 +39,13 @@ def generate_user_report(
     incomes_data = get_incomes_aggregated(user_id, period)
     expenses_data = get_expenses_aggregated(user_id, period)
     
+    # Валюта (має бути однаковою в обох)
+    currency = incomes_data.get('currency', 'UAH')
+    
+    # Розбивка по валютах
+    income_by_currency = incomes_data.get('by_currency', {})
+    expense_by_currency = expenses_data.get('by_currency', {})
+    
     # Списки транзакцій
     incomes = incomes_data.get('incomes', [])
     expenses = expenses_data.get('expenses', [])
@@ -51,6 +58,8 @@ def generate_user_report(
     # Категорії
     income_by_category = incomes_data.get('aggregated', {})
     expense_by_category = expenses_data.get('aggregated', {})
+    income_by_category_currency = incomes_data.get('aggregated_by_category_currency', {})
+    expense_by_category_currency = expenses_data.get('aggregated_by_category_currency', {})
     
     # Статистика
     income_count = len(incomes)
@@ -81,6 +90,11 @@ def generate_user_report(
         income_count=income_count,
         expense_count=expense_count,
         transaction_count=transaction_count,
+        currency=currency,
+        income_by_currency=income_by_currency,
+        expense_by_currency=expense_by_currency,
+        income_by_category_currency=income_by_category_currency,
+        expense_by_category_currency=expense_by_category_currency,
     )
     
     # Додаємо порівняння з попереднім періодом (опціонально)
